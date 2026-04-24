@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { App } from './App'
 import { AboutPage } from './pages/AboutPage'
+import { AiChatPage } from './pages/AiChatPage'
 import { ApiDemoPage } from './pages/ApiDemoPage'
 import { HomePage } from './pages/HomePage'
 
@@ -12,6 +13,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'api-demo', element: <ApiDemoPage /> },
+      { path: 'ai-chat', element: <AiChatPage /> },
     ],
   },
 ])

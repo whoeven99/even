@@ -14,6 +14,7 @@ export function App() {
           </NavLink>
           <NavLink to="/about">关于</NavLink>
           <NavLink to="/api-demo">接口示例</NavLink>
+          <NavLink to="/ai-chat">AI 对话</NavLink>
         </nav>
       </header>
       <main className="app-main">
