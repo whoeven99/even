@@ -91,3 +91,78 @@ button:disabled {
 .muted {
   color: #64748b;
 }
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.dash-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.dash-card-full {
+  grid-column: 1 / -1;
+}
+
+.dash-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.dash-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.task-list,
+.countdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.task-list li,
+.countdown-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.task-done {
+  color: #64748b;
+  text-decoration: line-through;
+}
+
+.budget-text {
+  margin: 0 0 8px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
