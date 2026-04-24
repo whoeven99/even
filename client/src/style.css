@@ -30,6 +30,12 @@ body {
   margin-bottom: 20px;
 }
 
+.brand-subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
 .nav {
   display: flex;
   gap: 12px;
@@ -80,4 +86,8 @@ button:disabled {
   border-radius: 8px;
   padding: 12px;
   overflow: auto;
+}
+
+.muted {
+  color: #64748b;
 }

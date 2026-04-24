@@ -4,7 +4,10 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Web Client</h1>
+        <div>
+          <h1>Whoeven SkyBoard</h1>
+          <p className="brand-subtitle">whoeven 的个人 Dashboard</p>
+        </div>
         <nav className="nav">
           <NavLink to="/" end>
             首页
