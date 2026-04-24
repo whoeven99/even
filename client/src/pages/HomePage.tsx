@@ -1,5 +1,3 @@
-import { AiChatBox } from '../components/AiChatBox'
-
 type PriorityTask = {
   id: string
   title: string
@@ -97,13 +95,6 @@ export function HomePage() {
           <p className="muted">预算使用率：{budgetPercent}%</p>
         </article>
 
-        <article className="dash-card dash-card-full">
-          <div className="dash-card-header">
-            <h3>AI 对话框</h3>
-          </div>
-          <p className="muted">直接调用后端 LangChain 接口（含天气工具）。</p>
-          <AiChatBox />
-        </article>
       </div>
     </section>
   )

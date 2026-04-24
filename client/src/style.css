@@ -16,10 +16,23 @@ body {
   min-height: 100vh;
 }
 
+.app-with-chat {
+  padding-right: 420px;
+}
+
 .app-shell {
   max-width: 960px;
   margin: 0 auto;
   padding: 24px;
+}
+
+.chat-dock-right {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  width: 390px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
 }
 
 .app-header {
@@ -166,7 +179,7 @@ button:disabled {
   border-radius: 12px;
   padding: 14px;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .chat-meta {
@@ -178,8 +191,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 260px;
-  max-height: 420px;
+  min-height: 360px;
+  max-height: 560px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -240,6 +253,17 @@ button:disabled {
 }
 
 @media (max-width: 768px) {
+  .app-with-chat {
+    padding-right: 0;
+  }
+
+  .chat-dock-right {
+    position: static;
+    width: auto;
+    max-height: none;
+    padding: 0 24px 24px;
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
   }

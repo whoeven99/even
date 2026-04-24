@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -18,12 +18,29 @@ type ChatApiResponse = {
 export function AiChatBox() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
       content: '你好，我是 AI 助手。你可以问我天气，比如：深圳今天天气怎么样？',
     },
   ])
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [messages, loading])
+
+  useEffect(() => {
+    if (!loading) {
+      inputRef.current?.focus()
+    }
+  }, [loading])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -62,7 +79,7 @@ export function AiChatBox() {
   return (
     <div className="chat-panel">
       <div className="chat-meta muted">已连接 LangChain 天气助手（Tool: query_weather）</div>
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesContainerRef}>
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
@@ -80,6 +97,8 @@ export function AiChatBox() {
 
       <form className="chat-form" onSubmit={handleSubmit}>
         <input
+          ref={inputRef}
+          autoFocus
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="请输入内容，比如：北京天气"
