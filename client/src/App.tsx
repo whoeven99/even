@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { AiChatBox } from './components/AiChatBox'
 import { writeCachedBillStages } from './utils/billStageCache'
 
 export function App() {
@@ -26,32 +25,24 @@ export function App() {
   }, [])
 
   return (
-    <div className="app-with-chat">
-      <div className="app-shell">
-        <header className="app-header">
-          <div>
-            <h1>Whoeven SkyBoard</h1>
-            <p className="brand-subtitle">whoeven 的个人 Dashboard</p>
-          </div>
-          <nav className="nav">
-            <NavLink to="/" end>
-              首页
-            </NavLink>
-            <NavLink to="/about">关于</NavLink>
-            <NavLink to="/api-demo">接口示例</NavLink>
-            <NavLink to="/ai-chat">AI 对话</NavLink>
-            <NavLink to="/bills">账单导入</NavLink>
-            <NavLink to="/asset-manager">资产管家</NavLink>
-          </nav>
-        </header>
-        <main className="app-main">
-          <Outlet />
-        </main>
-      </div>
-
-      <aside className="chat-dock-right">
-        <AiChatBox />
-      </aside>
+    <div className="app-shell">
+      <header className="app-header">
+        <div>
+          <h1>Whoeven SkyBoard</h1>
+          <p className="brand-subtitle">whoeven 的个人 Dashboard</p>
+        </div>
+        <nav className="nav">
+          <NavLink to="/" end>
+            首页
+          </NavLink>
+          <NavLink to="/ai-chat">AI 对话</NavLink>
+          <NavLink to="/bills">微信账单</NavLink>
+          <NavLink to="/asset-manager">资产管家</NavLink>
+        </nav>
+      </header>
+      <main className="app-main">
+        <Outlet />
+      </main>
     </div>
   )
 }

@@ -146,15 +146,15 @@ export function BillImportPage() {
     }
   }
 
-  async function handleLoadStage() {
-    if (!selectedStageId || stageLoading) return
+  async function handleLoadStage(stageId = selectedStageId) {
+    if (!stageId || stageLoading) return
     setError(null)
     setStageLoading(true)
     try {
       const response = await fetch('/api/bills/compute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stageId: selectedStageId }),
+        body: JSON.stringify({ stageId }),
       })
       const json =
         (await parseJsonSafe<BillImportResponse>(response)) ??
@@ -173,6 +173,12 @@ export function BillImportPage() {
     } finally {
       setStageLoading(false)
     }
+  }
+
+  async function handleStageChange(event: ChangeEvent<HTMLSelectElement>) {
+    const stageId = event.target.value
+    setSelectedStageId(stageId)
+    await handleLoadStage(stageId)
   }
 
   useEffect(() => {
@@ -264,7 +270,7 @@ export function BillImportPage() {
               id="stage-select"
               aria-label="选择历史账单"
               value={selectedStageId}
-              onChange={(e) => setSelectedStageId(e.target.value)}
+              onChange={handleStageChange}
               disabled={stageLoading || stages.length === 0}
             >
               {stages.length === 0 && <option value="">暂无暂存</option>}
@@ -274,14 +280,11 @@ export function BillImportPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              className="bill-status-btn"
-              onClick={handleLoadStage}
-              disabled={!selectedStageId || stageLoading}
-            >
-              {stageLoading ? '加载中…' : '查看账单'}
-            </button>
+            {stageLoading && (
+              <span className="bill-stage-loading" role="status" aria-live="polite">
+                查询中...
+              </span>
+            )}
           </div>
         </article>
       </div>
