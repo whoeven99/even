@@ -160,6 +160,114 @@ button:disabled {
   margin: 0 0 8px;
 }
 
+.weather-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.weather-list li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 140px 100px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.weather-list strong {
+  color: #1e3a8a;
+}
+
+.weather-error {
+  margin: 0;
+  color: #b91c1c;
+}
+
+.weather-chart-wrap {
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.weather-chart-legend {
+  display: flex;
+  gap: 14px;
+  color: #475569;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.weather-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weather-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.weather-legend-dot-max {
+  background: #ef4444;
+}
+
+.weather-legend-dot-min {
+  background: #3b82f6;
+}
+
+.weather-chart {
+  width: 100%;
+  height: 190px;
+  display: block;
+}
+
+.weather-chart-axis {
+  stroke: #cbd5e1;
+  stroke-width: 1;
+}
+
+.weather-chart-line-max,
+.weather-chart-line-min {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.weather-chart-line-max {
+  stroke: #ef4444;
+}
+
+.weather-chart-line-min {
+  stroke: #3b82f6;
+}
+
+.weather-chart-point-max {
+  fill: #ef4444;
+}
+
+.weather-chart-point-min {
+  fill: #3b82f6;
+}
+
+.weather-chart-label {
+  fill: #64748b;
+  font-size: 10px;
+}
+
+.weather-chart-temp-label {
+  fill: #64748b;
+  font-size: 10px;
+}
+
 .progress-track {
   width: 100%;
   height: 10px;
@@ -252,7 +360,637 @@ button:disabled {
   background: #fff;
 }
 
+.bill-page {
+  display: grid;
+  gap: 16px;
+}
+
+.bill-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  padding: 18px;
+  background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 55%, #eef8ff 100%);
+}
+
+.bill-hero h2 {
+  margin: 0 0 8px;
+}
+
+.bill-hero p {
+  margin: 0;
+  max-width: 680px;
+}
+
+.bill-hero-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #c7d9ff;
+  background: #ffffffcc;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bill-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.bill-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.bill-panel h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.bill-panel > .muted {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.bill-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bill-upload {
+  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bill-upload-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px dashed #7aa2ff;
+  background: linear-gradient(180deg, #f9fbff 0%, #f2f7ff 100%);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+  transition: all 0.2s ease;
+}
+
+.bill-upload-label:hover {
+  border-color: #5b8efb;
+  background: #edf4ff;
+}
+
+.bill-upload-label input {
+  display: none;
+}
+
+.bill-stage-picker {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.bill-stage-picker label {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.bill-stage-picker select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #0f172a;
+}
+
+.bill-status-btn {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.bill-status-btn:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #eaf2ff;
+}
+
+.bill-error {
+  color: #b91c1c;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  font-size: 14px;
+}
+
+.bill-batch-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.bill-parse-hint {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bill-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bill-stat {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 88px;
+  justify-content: space-between;
+}
+
+.bill-stat .muted {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.bill-stat-value {
+  font-size: clamp(20px, 1.9vw, 28px);
+  line-height: 1.1;
+  letter-spacing: -0.2px;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+.bill-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.bill-category-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1f2937;
+  transition: all 0.15s ease;
+}
+
+.bill-category-chip:hover {
+  background: #eef2ff;
+  border-color: #a5b4fc;
+}
+
+.bill-category-chip strong {
+  color: #4338ca;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-category-chip-active {
+  background: #ede9fe;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.22);
+}
+
+.bill-table-wrap {
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  max-height: 520px;
+  background: #fff;
+}
+
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bill-table th,
+.bill-table td {
+  padding: 9px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.bill-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.bill-table th {
+  background: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.bill-money-cell {
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-cat-tag {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bill-cell-ellipsis {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.am-page {
+  max-width: 760px;
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+  color: #111827;
+}
+
+.am-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.am-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.am-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.am-icon-btn {
+  min-height: 32px;
+  min-width: 58px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.am-summary-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 14px 16px;
+}
+
+.am-summary-label {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.am-summary-main {
+  margin: 6px 0 10px;
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.am-summary-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.am-tools {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.am-add-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.am-search-input,
+.am-select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+}
+
+.am-add-submit {
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 36px;
+}
+
+.am-error {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.am-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.am-checkbox input {
+  width: 14px;
+  height: 14px;
+}
+
+.am-tools-tip {
+  margin: 0;
+  justify-self: end;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.am-list {
+  display: grid;
+  gap: 8px;
+}
+
+.am-group {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.am-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+.am-group-title {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.am-group-title small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.am-group-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.am-group-header span {
+  font-size: 14px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.am-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.am-item {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.am-item + .am-item {
+  border-top: 1px solid #f3f4f6;
+}
+
+.am-item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.am-item-icon-red {
+  background: #ffe8ec;
+  color: #d13c5e;
+}
+
+.am-item-icon-gold {
+  background: #fff4d7;
+  color: #d69100;
+}
+
+.am-item-icon-blue {
+  background: #e7f2ff;
+  color: #2779d9;
+}
+
+.am-item-icon-purple {
+  background: #f2ebff;
+  color: #7b5fcb;
+}
+
+.am-item-text {
+  min-width: 0;
+}
+
+.am-item-text p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.am-item-text small {
+  display: block;
+  margin-top: 2px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.am-amount-btn {
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.am-item-amount-negative {
+  color: #111827;
+}
+
+.am-amount-input {
+  width: 130px;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.am-empty {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 14px;
+  background: #fff;
+}
+
 @media (max-width: 768px) {
+  .bill-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bill-control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bill-stage-picker {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .bill-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .bill-stat {
+    min-height: 78px;
+    padding: 9px 10px;
+  }
+
+  .bill-stat-value {
+    font-size: clamp(18px, 6vw, 24px);
+  }
+
+  .bill-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bill-cell-ellipsis {
+    max-width: 100px;
+  }
+
   .app-with-chat {
     padding-right: 0;
   }
@@ -268,11 +1006,44 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .weather-list li {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 4px;
+  }
+
+  .weather-chart {
+    height: 170px;
+  }
+
   .chat-message {
     max-width: 92%;
   }
 
   .chat-form {
     flex-direction: column;
+  }
+
+  .am-page {
+    max-width: none;
+  }
+
+  .am-header h2 {
+    font-size: 22px;
+  }
+
+  .am-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .am-add-form {
+    grid-template-columns: 1fr;
+  }
+
+  .am-tools-tip {
+    justify-self: start;
+  }
+
+  .am-summary-main {
+    font-size: 24px;
   }
 }

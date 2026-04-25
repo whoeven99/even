@@ -1,7 +1,30 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { AiChatBox } from './components/AiChatBox'
+import { writeCachedBillStages } from './utils/billStageCache'
 
 export function App() {
+  useEffect(() => {
+    const timerId = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/bills/stages?limit=30')
+        const json = (await response.json()) as {
+          ok?: boolean
+          stages?: unknown[]
+        }
+        if (response.ok && json?.ok && Array.isArray(json.stages)) {
+          writeCachedBillStages(json.stages)
+        }
+      } catch {
+        // 首页预加载失败时静默降级，账单页会自行请求
+      }
+    }, 300)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [])
+
   return (
     <div className="app-with-chat">
       <div className="app-shell">
@@ -17,6 +40,8 @@ export function App() {
             <NavLink to="/about">关于</NavLink>
             <NavLink to="/api-demo">接口示例</NavLink>
             <NavLink to="/ai-chat">AI 对话</NavLink>
+            <NavLink to="/bills">账单导入</NavLink>
+            <NavLink to="/asset-manager">资产管家</NavLink>
           </nav>
         </header>
         <main className="app-main">

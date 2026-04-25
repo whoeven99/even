@@ -3,6 +3,8 @@ import { App } from './App'
 import { AboutPage } from './pages/AboutPage'
 import { AiChatPage } from './pages/AiChatPage'
 import { ApiDemoPage } from './pages/ApiDemoPage'
+import { AssetManagerPage } from './pages/AssetManagerPage'
+import { BillImportPage } from './pages/BillImportPage'
 import { HomePage } from './pages/HomePage'
 
 export const router = createBrowserRouter([
@@ -14,6 +16,8 @@ export const router = createBrowserRouter([
       { path: 'about', element: <AboutPage /> },
       { path: 'api-demo', element: <ApiDemoPage /> },
       { path: 'ai-chat', element: <AiChatPage /> },
+      { path: 'bills', element: <BillImportPage /> },
+      { path: 'asset-manager', element: <AssetManagerPage /> },
     ],
   },
 ])
