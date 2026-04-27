@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AiChatBox } from '../components/AiChatBox'
 import { requestWithFetch } from '../services/http'
 
@@ -107,6 +107,38 @@ export function HomePage() {
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null)
   const [editingTodoText, setEditingTodoText] = useState('')
   const weatherChart = weatherData ? buildTemperatureChart(weatherData.forecast) : null
+  const isMountedRef = useRef(true)
+
+  const loadTodos = useCallback(async (options?: { showLoading?: boolean }) => {
+    const showLoading = options?.showLoading ?? true
+    if (showLoading && isMountedRef.current) {
+      setTodoLoading(true)
+    }
+    if (isMountedRef.current) {
+      setTodoError(null)
+    }
+    try {
+      const data = await requestWithFetch<TodoApiResponse>('/api/todos')
+      if (isMountedRef.current) {
+        setTodoItems(Array.isArray(data.items) ? data.items : [])
+      }
+    } catch (error) {
+      if (isMountedRef.current) {
+        setTodoError(error instanceof Error ? error.message : '待办读取失败')
+      }
+    } finally {
+      if (showLoading && isMountedRef.current) {
+        setTodoLoading(false)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -155,30 +187,18 @@ export function HomePage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    async function loadTodos() {
-      setTodoLoading(true)
-      setTodoError(null)
-      try {
-        const data = await requestWithFetch<TodoApiResponse>('/api/todos')
-        if (!cancelled) {
-          setTodoItems(Array.isArray(data.items) ? data.items : [])
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setTodoError(error instanceof Error ? error.message : '待办读取失败')
-        }
-      } finally {
-        if (!cancelled) {
-          setTodoLoading(false)
-        }
-      }
-    }
     void loadTodos()
-    return () => {
-      cancelled = true
+  }, [loadTodos])
+
+  useEffect(() => {
+    const handleTodoChanged = () => {
+      void loadTodos({ showLoading: false })
     }
-  }, [])
+    window.addEventListener('todos:changed', handleTodoChanged)
+    return () => {
+      window.removeEventListener('todos:changed', handleTodoChanged)
+    }
+  }, [loadTodos])
 
   async function createTodo() {
     const text = newTodoText.trim()

@@ -73,6 +73,7 @@ export function AiChatBox() {
 
       const reply = data.reply
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      window.dispatchEvent(new CustomEvent('todos:changed'))
     } catch (error) {
       setMessages((prev) => [
         ...prev,
