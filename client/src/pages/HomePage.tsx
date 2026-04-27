@@ -264,8 +264,13 @@ export function HomePage() {
   }
 
   return (
-    <section className="home-layout">
-      <div className="home-main">
+    <section className="page-shell home-page-fit">
+      <header className="page-hero">
+        <h2>今日概览</h2>
+        <p className="muted">在一个页面里快速处理待办、查看天气并与 AI 助手联动。</p>
+      </header>
+      <div className="home-layout">
+        <div className="home-main">
         <article className="dash-card home-todo-card">
           <div className="dash-card-header">
             <h3>待办事项</h3>
@@ -450,11 +455,12 @@ export function HomePage() {
             </>
           ) : null}
         </article>
-      </div>
+        </div>
 
-      <aside className="home-ai-side">
-        <AiChatBox />
-      </aside>
+        <aside className="home-ai-side">
+          <AiChatBox />
+        </aside>
+      </div>
     </section>
   )
 }

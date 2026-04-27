@@ -141,24 +141,31 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <h1>Whoeven SkyBoard</h1>
-          <p className="brand-subtitle">whoeven 的个人 Dashboard</p>
-        </div>
-        <nav className="nav">
-          <NavLink to="/" end>
-            首页
-          </NavLink>
-          <NavLink to="/ai-chat">AI 对话</NavLink>
-          <NavLink to="/bills">微信账单</NavLink>
-          <NavLink to="/asset-manager">资产管家</NavLink>
-        </nav>
-      </header>
-      <main className="app-main">
-        <Outlet />
-      </main>
+    <div className="app-bg">
+      <div className="app-shell">
+        <header className="app-header">
+          <div>
+            <p className="brand-badge">Whoeven Dashboard</p>
+            <h1>Whoeven SkyBoard</h1>
+            <p className="brand-subtitle">统一管理账单、资产、待办与 AI 助手</p>
+          </div>
+          <nav className="nav">
+            <NavLink to="/" end>
+              首页
+            </NavLink>
+            <NavLink to="/ai-chat">AI 对话</NavLink>
+            <NavLink to="/bills">微信账单</NavLink>
+            <NavLink to="/asset-manager">资产管家</NavLink>
+          </nav>
+        </header>
+        <main className="app-main">
+          <Outlet />
+        </main>
+        <footer className="app-footer">
+          <span>SkyBoard</span>
+          <span className="muted">数据仅用于当前环境内展示与分析</span>
+        </footer>
+      </div>
     </div>
   )
 }

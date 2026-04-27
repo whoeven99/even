@@ -232,8 +232,8 @@ export function BillImportPage() {
     : 0
 
   return (
-    <section className="bill-page">
-      <header className="bill-hero">
+    <section className="page-shell bill-page">
+      <header className="bill-hero page-hero page-hero-inline">
         <div>
           <h2>微信账单导入</h2>
           <p className="muted">

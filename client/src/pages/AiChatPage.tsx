@@ -2,10 +2,16 @@ import { AiChatBox } from '../components/AiChatBox'
 
 export function AiChatPage() {
   return (
-    <section>
-      <h2>AI 对话</h2>
-      <p className="muted">页面已预留 AI 对话区，并接入 LangChain 后端接口。</p>
-      <AiChatBox />
+    <section className="page-shell ai-chat-page-fit">
+      <header className="page-hero">
+        <h2>AI 对话助手</h2>
+        <p className="muted">
+          通过自然语言直接查询天气、管理待办，基于 LangChain Agent 与后端工具链完成操作。
+        </p>
+      </header>
+      <div className="page-panel">
+        <AiChatBox />
+      </div>
     </section>
   )
 }

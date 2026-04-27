@@ -243,8 +243,8 @@ export function AssetManagerPage() {
   }
 
   return (
-    <section className="am-page">
-      <header className="am-header">
+    <section className="page-shell am-page">
+      <header className="am-header page-hero page-hero-inline">
         <h2>资产管家</h2>
         <div className="am-header-actions">
           <button
