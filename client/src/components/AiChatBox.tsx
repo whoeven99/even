@@ -23,7 +23,17 @@ export function AiChatBox() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: '你好，我是 AI 助手。你可以问我天气，比如：深圳今天天气怎么样？',
+      content:
+        '你好，我可以帮你做两类事：\n\n' +
+        '查天气\n' +
+        '- 深圳今天天气\n' +
+        '- 我这里现在天气怎么样\n' +
+        '- 上海未来 3 天天气\n\n' +
+        '管待办（自动保存）\n' +
+        '- 添加待办：明天交周报\n' +
+        '- 查看我的待办\n' +
+        '- 把“明天交周报”标记完成\n' +
+        '- 删除“明天交周报”',
     },
   ])
 
@@ -78,21 +88,31 @@ export function AiChatBox() {
 
   return (
     <div className="chat-panel">
-      <div className="chat-meta muted">已连接 LangChain 天气助手（Tool: query_weather）</div>
+      <div className="chat-meta muted">
+        已连接 LangChain Agent（Tools: 天气、IP 定位、待办管理）
+      </div>
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
             className={`chat-message ${message.role === 'user' ? 'chat-user' : 'chat-assistant'}`}
           >
-            {message.role === 'assistant' ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-            ) : (
-              message.content
-            )}
+            <div className="chat-message-head">{message.role === 'assistant' ? 'AI' : '你'}</div>
+            <div className="chat-message-body">
+              {message.role === 'assistant' ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+              ) : (
+                message.content
+              )}
+            </div>
           </div>
         ))}
-        {loading && <div className="chat-message chat-assistant chat-typing">AI 正在思考...</div>}
+        {loading && (
+          <div className="chat-message chat-assistant chat-typing">
+            <div className="chat-message-head">AI</div>
+            <div className="chat-message-body">AI 正在思考...</div>
+          </div>
+        )}
       </div>
 
       <form className="chat-form" onSubmit={handleSubmit}>

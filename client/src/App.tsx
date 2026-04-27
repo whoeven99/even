@@ -1,9 +1,90 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { requestWithFetch } from './services/http'
 import { writeCachedBillStages } from './utils/billStageCache'
 
+type AccessConfigResponse = {
+  ok: boolean
+  env?: string
+  requirePassword?: boolean
+}
+
+type AccessVerifyResponse = {
+  ok: boolean
+  verified?: boolean
+}
+
+const ACCESS_STORAGE_PREFIX = 'even-access-verified:'
+
 export function App() {
+  const [checkingAccess, setCheckingAccess] = useState(true)
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [accessEnv, setAccessEnv] = useState('local')
+  const [passwordInput, setPasswordInput] = useState('')
+  const [accessError, setAccessError] = useState('')
+  const [verifyingAccess, setVerifyingAccess] = useState(false)
+
   useEffect(() => {
+    let cancelled = false
+    async function initAccessGate() {
+      setCheckingAccess(true)
+      setAccessError('')
+      try {
+        const config = await requestWithFetch<AccessConfigResponse>('/api/access/config')
+        if (cancelled) return
+        const envValue = String(config.env || 'local')
+        setAccessEnv(envValue)
+        const storageKey = `${ACCESS_STORAGE_PREFIX}${envValue}`
+        const hasLocalToken = sessionStorage.getItem(storageKey) === 'ok'
+        if (!config.requirePassword || hasLocalToken) {
+          setIsAuthorized(true)
+        } else {
+          setIsAuthorized(false)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAccessError(error instanceof Error ? error.message : '访问校验失败')
+          setIsAuthorized(false)
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingAccess(false)
+        }
+      }
+    }
+    void initAccessGate()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function submitPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!passwordInput.trim() || verifyingAccess) return
+    setVerifyingAccess(true)
+    setAccessError('')
+    try {
+      const result = await requestWithFetch<AccessVerifyResponse>('/api/access/verify', {
+        method: 'POST',
+        body: JSON.stringify({ password: passwordInput.trim() }),
+      })
+      if (!result.ok || !result.verified) {
+        throw new Error('密码验证失败')
+      }
+      const storageKey = `${ACCESS_STORAGE_PREFIX}${accessEnv}`
+      sessionStorage.setItem(storageKey, 'ok')
+      setIsAuthorized(true)
+      setPasswordInput('')
+    } catch (error) {
+      setAccessError(error instanceof Error ? error.message : '密码验证失败')
+    } finally {
+      setVerifyingAccess(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthorized) return
     const timerId = window.setTimeout(async () => {
       try {
         const response = await fetch('/api/bills/stages?limit=30')
@@ -22,7 +103,42 @@ export function App() {
     return () => {
       window.clearTimeout(timerId)
     }
-  }, [])
+  }, [isAuthorized])
+
+  if (checkingAccess) {
+    return (
+      <div className="access-gate-screen">
+        <div className="access-gate-card">
+          <h2>正在检查访问权限</h2>
+          <p className="muted">请稍候...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="access-gate-screen">
+        <form className="access-gate-card" onSubmit={submitPassword}>
+          <h2>请输入访问密码</h2>
+          <p className="muted">当前环境：{accessEnv}</p>
+          <input
+            className="access-gate-input"
+            type="password"
+            value={passwordInput}
+            autoFocus
+            placeholder="请输入密码"
+            disabled={verifyingAccess}
+            onChange={(event) => setPasswordInput(event.target.value)}
+          />
+          {accessError ? <p className="access-gate-error">{accessError}</p> : null}
+          <button type="submit" disabled={verifyingAccess || !passwordInput.trim()}>
+            {verifyingAccess ? '验证中...' : '进入系统'}
+          </button>
+        </form>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">

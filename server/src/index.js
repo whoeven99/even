@@ -13,6 +13,7 @@ const {
   deleteBillStage,
 } = require('./billAiParse')
 const { getAssets, updateAssets } = require('./assetStore')
+const { getTodos, createTodo, updateTodo, deleteTodo } = require('./todoStore')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -22,12 +23,28 @@ const upload = multer({
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
 const clientDistPath = path.resolve(__dirname, '../../client/dist')
+const runtimeEnv = String(process.env.env || process.env.ENV || 'local').trim().toLowerCase()
+const requireAccessPassword = runtimeEnv !== 'local'
+const ACCESS_PASSWORD = '155010'
 
 app.use(cors())
 app.use(express.json())
 
 const api = express.Router()
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function extractClientIp(req) {
+  const xForwardedFor = req.headers['x-forwarded-for']
+  if (typeof xForwardedFor === 'string' && xForwardedFor.trim()) {
+    const first = xForwardedFor.split(',')[0]?.trim()
+    if (first) return first
+  }
+  const xRealIp = req.headers['x-real-ip']
+  if (typeof xRealIp === 'string' && xRealIp.trim()) {
+    return xRealIp.trim()
+  }
+  return String(req.ip || '').trim()
+}
 
 api.get('/health', (_req, res) => {
   res.json({
@@ -42,6 +59,27 @@ api.post('/echo', (req, res) => {
     ok: true,
     received: req.body ?? null,
   })
+})
+
+api.get('/access/config', (_req, res) => {
+  res.json({
+    ok: true,
+    env: runtimeEnv,
+    requirePassword: requireAccessPassword,
+  })
+})
+
+api.post('/access/verify', (req, res) => {
+  if (!requireAccessPassword) {
+    res.json({ ok: true, verified: true })
+    return
+  }
+  const password = String(req.body?.password || '')
+  if (password !== ACCESS_PASSWORD) {
+    res.status(401).json({ ok: false, verified: false, message: '密码错误' })
+    return
+  }
+  res.json({ ok: true, verified: true })
 })
 
 async function handleBillImport(req, res) {
@@ -171,6 +209,65 @@ api.put('/assets', async (req, res) => {
   }
 })
 
+api.get('/todos', async (_req, res) => {
+  try {
+    const data = await getTodos()
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '待办读取失败',
+    })
+  }
+})
+
+api.post('/todos', async (req, res) => {
+  const text = req.body?.text
+  try {
+    const data = await createTodo(text)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '待办新增失败',
+    })
+  }
+})
+
+api.put('/todos/:todoId', async (req, res) => {
+  const todoId = req.params?.todoId
+  const body = req.body && typeof req.body === 'object' ? req.body : {}
+  const patch = {}
+  if (Object.prototype.hasOwnProperty.call(body, 'text')) {
+    patch.text = body.text
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'done')) {
+    patch.done = body.done
+  }
+  try {
+    const data = await updateTodo(todoId, patch)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '待办更新失败',
+    })
+  }
+})
+
+api.delete('/todos/:todoId', async (req, res) => {
+  const todoId = req.params?.todoId
+  try {
+    const data = await deleteTodo(todoId)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '待办删除失败',
+    })
+  }
+})
+
 api.post('/ai/chat', async (req, res) => {
   const message = req.body?.message
   if (typeof message !== 'string' || !message.trim()) {
@@ -209,6 +306,83 @@ api.get('/weather/recent', async (req, res) => {
       message: error instanceof Error ? error.message : '天气查询失败',
     })
   }
+})
+
+api.get('/weather/city-by-ip', async (req, res) => {
+  const clientIp = extractClientIp(req)
+  const normalizedIp =
+    clientIp === '::1' || clientIp === '127.0.0.1' || clientIp === '::ffff:127.0.0.1'
+      ? ''
+      : clientIp
+  const lookupPlans = normalizedIp
+    ? [
+        {
+          source: 'ip-api.com',
+          url: `http://ip-api.com/json/${encodeURIComponent(normalizedIp)}?lang=zh-CN`,
+          readCity: (json) => String(json?.city || '').trim(),
+          checkError: (json) => (json?.status === 'fail' ? String(json?.message || '定位失败') : ''),
+        },
+        {
+          source: 'ipapi.co',
+          url: `https://ipapi.co/${encodeURIComponent(normalizedIp)}/json/`,
+          readCity: (json) => String(json?.city || '').trim(),
+          checkError: (json) => String(json?.error || '').trim(),
+        },
+      ]
+    : [
+        {
+          source: 'ip-api.com',
+          url: 'http://ip-api.com/json/?lang=zh-CN',
+          readCity: (json) => String(json?.city || '').trim(),
+          checkError: (json) => (json?.status === 'fail' ? String(json?.message || '定位失败') : ''),
+        },
+        {
+          source: 'ipapi.co',
+          url: 'https://ipapi.co/json/',
+          readCity: (json) => String(json?.city || '').trim(),
+          checkError: (json) => String(json?.error || '').trim(),
+        },
+      ]
+
+  const errors = []
+  for (const plan of lookupPlans) {
+    try {
+      const response = await fetch(plan.url, {
+        headers: { 'User-Agent': 'even-dashboard/1.0' },
+      })
+      if (!response.ok) {
+        errors.push(`${plan.source}: HTTP ${response.status}`)
+        continue
+      }
+      const json = await response.json()
+      const apiError = plan.checkError(json)
+      if (apiError) {
+        errors.push(`${plan.source}: ${apiError}`)
+        continue
+      }
+      const city = plan.readCity(json)
+      if (!city) {
+        errors.push(`${plan.source}: 未返回城市`)
+        continue
+      }
+      res.json({
+        ok: true,
+        city,
+        ip: clientIp || null,
+        source: plan.source,
+      })
+      return
+    } catch (error) {
+      errors.push(`${plan.source}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  res.status(200).json({
+    ok: false,
+    city: '',
+    ip: clientIp || null,
+    source: 'ipapi.co/ip-api.com',
+    message: errors.length ? errors.join(' | ') : 'IP 定位失败',
+  })
 })
 
 app.use('/api', api)
