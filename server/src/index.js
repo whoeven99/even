@@ -23,9 +23,23 @@ const upload = multer({
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
 const clientDistPath = path.resolve(__dirname, '../../client/dist')
-const runtimeEnv = String(process.env.env || process.env.ENV || 'local').trim().toLowerCase()
-const requireAccessPassword = runtimeEnv !== 'local'
-const ACCESS_PASSWORD = '155010'
+const runtimeEnv = String(
+  process.env.APP_ENV || process.env.env || process.env.ENV || process.env.NODE_ENV || 'local',
+)
+  .trim()
+  .toLowerCase()
+
+function parseBooleanEnv(value) {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+  return null
+}
+
+const requireAccessPassword =
+  parseBooleanEnv(process.env.ACCESS_REQUIRE_PASSWORD) ?? runtimeEnv !== 'local'
+const ACCESS_PASSWORD = String(process.env.ACCESS_PASSWORD || '155010')
 
 app.use(cors())
 app.use(express.json())
