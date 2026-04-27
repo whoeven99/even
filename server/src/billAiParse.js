@@ -5,7 +5,6 @@ const { parse } = require('csv-parse/sync')
 
 const CATEGORIES = ['餐饮', '购物', '日用', '住房', '汽车', '高速', '娱乐', '其他']
 const STAGE_TTL_MS = 30 * 60 * 1000
-const stageStore = new Map()
 const AZURE_STAGE_PREFIX = 'bill-stages'
 
 let azureClientsPromise = null
@@ -54,8 +53,7 @@ async function getAzureClients() {
     const hasCosmos =
       cfg.cosmosEndpoint && cfg.cosmosKey && cfg.cosmosDatabase && cfg.cosmosContainer
     if (!hasBlob || !hasCosmos) {
-      console.warn('[bill-storage] Azure config incomplete, fallback to memory store')
-      return { enabled: false, reason: 'blob_or_cosmos_missing' }
+      throw new Error('Azure 存储配置不完整：缺少 Blob 或 Cosmos 配置')
     }
 
     const blobService = BlobServiceClient.fromConnectionString(
@@ -315,14 +313,6 @@ function extractRowsDeterministic(buffer, originalname = '') {
   return { rows: allRows, sourceLineCount }
 }
 
-function cleanupExpiredStages() {
-  const now = Date.now()
-  const ttlMs = Number(process.env.BILL_STAGE_TTL_MS || STAGE_TTL_MS)
-  for (const [id, s] of stageStore.entries()) {
-    if (now - s.createdAt > ttlMs) stageStore.delete(id)
-  }
-}
-
 function finalizeFromRows(rows, stageId) {
   const summaryByCategory = Object.fromEntries(CATEGORIES.map((c) => [c, 0]))
   let incomeTotal = 0
@@ -382,7 +372,6 @@ function finalizeFromRows(rows, stageId) {
 }
 
 async function createBillStageFromUpload(buffer, originalname) {
-  cleanupExpiredStages()
   const { rows, sourceLineCount } = extractRowsDeterministic(buffer, originalname)
   const monthGroups = splitRowsByMonth(rows)
   const fallbackMonthKey = inferMonthKeyFromRows(rows)
@@ -391,12 +380,7 @@ async function createBillStageFromUpload(buffer, originalname) {
     : [{ monthKey: fallbackMonthKey, rows }]
   const cfg = getStageStoreConfig()
   const createdAt = Date.now()
-  let azure = null
-  try {
-    azure = await getAzureClients()
-  } catch {
-    azure = null
-  }
+  const azure = await getAzureClients()
 
   const createdStages = []
   for (const group of groups) {
@@ -405,53 +389,29 @@ async function createBillStageFromUpload(buffer, originalname) {
     const groupRows = group.rows
     const groupSourceLineCount = groupRows.length
     const blobName = `${AZURE_STAGE_PREFIX}/${stageId}.json`
-    let storageMode = 'memory'
-
-    try {
-      if (azure?.enabled) {
-        const payload = JSON.stringify({
-          stageId,
-          createdAt,
-          originalname: originalname || '',
-          rows: groupRows,
-          sourceLineCount: groupSourceLineCount,
-        })
-        await azure.containerClient
-          .getBlockBlobClient(blobName)
-          .upload(payload, Buffer.byteLength(payload), {
-            blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
-          })
-        await azure.cosmosContainer.items.upsert({
-          id: stageId,
-          pk: 'bill-stage',
-          stageId,
-          createdAt,
-          originalname: originalname || '',
-          blobName,
-          sourceLineCount: groupSourceLineCount,
-          rowCount: groupRows.length,
-          mode: 'azure',
-        })
-        storageMode = 'azure'
-      } else {
-        stageStore.set(stageId, {
-          stageId,
-          createdAt,
-          rows: groupRows,
-          originalname: originalname || '',
-          sourceLineCount: groupSourceLineCount,
-        })
-      }
-    } catch {
-      stageStore.set(stageId, {
-        stageId,
-        createdAt,
-        rows: groupRows,
-        originalname: originalname || '',
-        sourceLineCount: groupSourceLineCount,
+    const payload = JSON.stringify({
+      stageId,
+      createdAt,
+      originalname: originalname || '',
+      rows: groupRows,
+      sourceLineCount: groupSourceLineCount,
+    })
+    await azure.containerClient
+      .getBlockBlobClient(blobName)
+      .upload(payload, Buffer.byteLength(payload), {
+        blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
       })
-      storageMode = 'memory-fallback'
-    }
+    await azure.cosmosContainer.items.upsert({
+      id: stageId,
+      pk: 'bill-stage',
+      stageId,
+      createdAt,
+      originalname: originalname || '',
+      blobName,
+      sourceLineCount: groupSourceLineCount,
+      rowCount: groupRows.length,
+      mode: 'azure',
+    })
 
     createdStages.push({
       stageId,
@@ -461,7 +421,7 @@ async function createBillStageFromUpload(buffer, originalname) {
       chunkCount: 1,
       sourceLineCount: groupSourceLineCount,
       expiresInMs: cfg.ttlMs,
-      storageMode,
+      storageMode: 'azure',
     })
   }
 
@@ -469,7 +429,7 @@ async function createBillStageFromUpload(buffer, originalname) {
   lastStageWriteStatus = {
     at: new Date().toISOString(),
     stageId: primaryStage?.stageId || null,
-    storageMode: primaryStage?.storageMode || 'memory',
+    storageMode: primaryStage?.storageMode || 'none',
     rowCount: primaryStage?.rowCount || 0,
     chunkCount: 1,
     sourceLineCount,
@@ -484,7 +444,7 @@ async function createBillStageFromUpload(buffer, originalname) {
       chunkCount: 1,
       sourceLineCount,
       expiresInMs: cfg.ttlMs,
-      storageMode: 'memory',
+      storageMode: 'none',
     }),
     stageCount: createdStages.length,
     createdStages,
@@ -493,48 +453,41 @@ async function createBillStageFromUpload(buffer, originalname) {
 }
 
 async function computeBillFromStage(stageId) {
-  cleanupExpiredStages()
-  let stage = stageStore.get(stageId)
-  if (!stage) {
+  let stage = null
+  const azure = await getAzureClients()
+  if (azure.enabled) {
+    let resource = null
     try {
-      const azure = await getAzureClients()
-      if (azure.enabled) {
-        let resource = null
-        try {
-          const byPk = await azure.cosmosContainer.item(stageId, 'bill-stage').read()
-          resource = byPk.resource || null
-        } catch {
-          // ignore and query by id
-        }
-        if (!resource) {
-          const result = await azure.cosmosContainer.items
-            .query({
-              query: 'SELECT TOP 1 * FROM c WHERE c.id = @id',
-              parameters: [{ name: '@id', value: stageId }],
-            })
-            .fetchAll()
-          resource = result.resources?.[0] || null
-        }
-        if (resource?.blobName) {
-          const blobClient = azure.containerClient.getBlobClient(String(resource.blobName))
-          const download = await blobClient.download()
-          const text = await streamToString(download.readableStreamBody)
-          const parsed = JSON.parse(text)
-          stage = {
-            stageId: parsed.stageId || stageId,
-            createdAt: Number(parsed.createdAt || Date.now()),
-            rows: Array.isArray(parsed.rows) ? parsed.rows : [],
-            originalname: String(parsed.originalname || ''),
-            sourceLineCount: Number(parsed.sourceLineCount || 0),
-          }
-        }
-      }
+      const byPk = await azure.cosmosContainer.item(stageId, 'bill-stage').read()
+      resource = byPk.resource || null
     } catch {
-      // ignore
+      // ignore and query by id
+    }
+    if (!resource) {
+      const result = await azure.cosmosContainer.items
+        .query({
+          query: 'SELECT TOP 1 * FROM c WHERE c.id = @id',
+          parameters: [{ name: '@id', value: stageId }],
+        })
+        .fetchAll()
+      resource = result.resources?.[0] || null
+    }
+    if (resource?.blobName) {
+      const blobClient = azure.containerClient.getBlobClient(String(resource.blobName))
+      const download = await blobClient.download()
+      const text = await streamToString(download.readableStreamBody)
+      const parsed = JSON.parse(text)
+      stage = {
+        stageId,
+        createdAt: Number(parsed.createdAt || Date.now()),
+        rows: Array.isArray(parsed.rows) ? parsed.rows : [],
+        originalname: String(parsed.originalname || ''),
+        sourceLineCount: Number(parsed.sourceLineCount || 0),
+      }
     }
   }
   if (!stage) {
-    throw new Error('暂存数据不存在、已过期或存储不可用，请重新上传账单')
+    throw new Error('暂存数据不存在或存储不可用，请重新上传账单')
   }
   return finalizeFromRows(stage.rows, stageId)
 }
@@ -579,51 +532,36 @@ async function getStorageStatus() {
     hasCosmosConfig,
     azureEnabled,
     azureReason,
-    inMemoryStageCount: stageStore.size,
+    inMemoryStageCount: 0,
     lastStageWriteStatus,
   }
 }
 
 async function listBillStages(limit = 20) {
-  cleanupExpiredStages()
   const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100)
-  const result = []
-
-  for (const value of stageStore.values()) {
-    result.push({
-      stageId: value.stageId,
-      createdAt: value.createdAt,
-      storageMode: 'memory',
-      rowCount: Array.isArray(value.rows) ? value.rows.length : 0,
-      sourceLineCount: Number(value.sourceLineCount || 0),
-    })
+  const azure = await getAzureClients()
+  if (!azure.enabled) {
+    return []
   }
-
-  try {
-    const azure = await getAzureClients()
-    if (azure.enabled) {
-      const query = await azure.cosmosContainer.items
-        .query({
-          query:
-            'SELECT TOP @limit c.id, c.stageId, c.createdAt, c.rowCount, c.sourceLineCount, c.mode FROM c WHERE c.pk = @pk ORDER BY c.createdAt DESC',
-          parameters: [
-            { name: '@limit', value: safeLimit },
-            { name: '@pk', value: 'bill-stage' },
-          ],
-        })
-        .fetchAll()
-      for (const item of query.resources || []) {
-        result.push({
-          stageId: String(item.stageId || item.id || ''),
-          createdAt: Number(item.createdAt || 0),
-          storageMode: String(item.mode || 'azure'),
-          rowCount: Number(item.rowCount || 0),
-          sourceLineCount: Number(item.sourceLineCount || 0),
-        })
-      }
-    }
-  } catch {
-    // ignore azure list errors and return what we have
+  const result = []
+  const query = await azure.cosmosContainer.items
+    .query({
+      query:
+        'SELECT TOP @limit c.id, c.stageId, c.createdAt, c.rowCount, c.sourceLineCount, c.mode FROM c WHERE c.pk = @pk ORDER BY c.createdAt DESC',
+      parameters: [
+        { name: '@limit', value: safeLimit },
+        { name: '@pk', value: 'bill-stage' },
+      ],
+    })
+    .fetchAll()
+  for (const item of query.resources || []) {
+    result.push({
+      stageId: String(item.stageId || item.id || ''),
+      createdAt: Number(item.createdAt || 0),
+      storageMode: String(item.mode || 'azure'),
+      rowCount: Number(item.rowCount || 0),
+      sourceLineCount: Number(item.sourceLineCount || 0),
+    })
   }
 
   const dedup = new Map()
@@ -641,68 +579,59 @@ async function listBillStages(limit = 20) {
 }
 
 async function deleteBillStage(stageId) {
-  cleanupExpiredStages()
   const normalizedStageId = String(stageId || '').trim()
   if (!normalizedStageId) {
     throw new Error('stageId 不能为空')
   }
-
-  const deletedMemory = stageStore.delete(normalizedStageId)
+  const azure = await getAzureClients()
   let deletedBlob = false
   let deletedRecord = false
 
-  try {
-    const azure = await getAzureClients()
-    if (azure.enabled) {
-      const query = await azure.cosmosContainer.items
-        .query({
-          query:
-            'SELECT c.id, c.pk, c.stageId, c.blobName FROM c WHERE c.pk = @pk AND (c.id = @id OR c.stageId = @stageId)',
-          parameters: [
-            { name: '@pk', value: 'bill-stage' },
-            { name: '@id', value: normalizedStageId },
-            { name: '@stageId', value: normalizedStageId },
-          ],
-        })
-        .fetchAll()
+  const query = await azure.cosmosContainer.items
+    .query({
+      query:
+        'SELECT c.id, c.pk, c.stageId, c.blobName FROM c WHERE c.pk = @pk AND (c.id = @id OR c.stageId = @stageId)',
+      parameters: [
+        { name: '@pk', value: 'bill-stage' },
+        { name: '@id', value: normalizedStageId },
+        { name: '@stageId', value: normalizedStageId },
+      ],
+    })
+    .fetchAll()
 
-      const resources = Array.isArray(query.resources) ? query.resources : []
-      const blobNames = new Set([`${AZURE_STAGE_PREFIX}/${normalizedStageId}.json`])
-      for (const item of resources) {
-        if (item?.blobName) blobNames.add(String(item.blobName))
-      }
+  const resources = Array.isArray(query.resources) ? query.resources : []
+  const blobNames = new Set([`${AZURE_STAGE_PREFIX}/${normalizedStageId}.json`])
+  for (const item of resources) {
+    if (item?.blobName) blobNames.add(String(item.blobName))
+  }
 
-      for (const blobName of blobNames) {
-        try {
-          const deleted = await azure.containerClient
-            .getBlockBlobClient(String(blobName))
-            .deleteIfExists({ deleteSnapshots: 'include' })
-          if (deleted?.succeeded) deletedBlob = true
-        } catch {
-          // ignore blob delete errors
-        }
-      }
-
-      for (const item of resources) {
-        const recordId = String(item?.id || '')
-        const recordPk = String(item?.pk || 'bill-stage')
-        if (!recordId) continue
-        try {
-          await azure.cosmosContainer.item(recordId, recordPk).delete()
-          deletedRecord = true
-        } catch {
-          // ignore single record delete errors, continue others
-        }
-      }
+  for (const blobName of blobNames) {
+    try {
+      const deleted = await azure.containerClient
+        .getBlockBlobClient(String(blobName))
+        .deleteIfExists({ deleteSnapshots: 'include' })
+      if (deleted?.succeeded) deletedBlob = true
+    } catch {
+      // ignore blob delete errors
     }
-  } catch {
-    // ignore azure client errors, memory delete already attempted
+  }
+
+  for (const item of resources) {
+    const recordId = String(item?.id || '')
+    const recordPk = String(item?.pk || 'bill-stage')
+    if (!recordId) continue
+    try {
+      await azure.cosmosContainer.item(recordId, recordPk).delete()
+      deletedRecord = true
+    } catch {
+      // ignore single record delete errors, continue others
+    }
   }
 
   return {
     stageId: normalizedStageId,
-    deleted: deletedMemory || deletedBlob || deletedRecord,
-    deletedMemory,
+    deleted: deletedBlob || deletedRecord,
+    deletedMemory: false,
     deletedBlob,
     deletedRecord,
   }
