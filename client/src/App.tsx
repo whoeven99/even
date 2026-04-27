@@ -16,6 +16,40 @@ type AccessVerifyResponse = {
 }
 
 const ACCESS_STORAGE_PREFIX = 'even-access-verified:'
+const ACCESS_CACHE_TTL_MS = 10 * 24 * 60 * 60 * 1000
+
+type AccessCachePayload = {
+  verified: boolean
+  expiresAt: number
+}
+
+function readAccessCache(storageKey: string): boolean {
+  const raw = localStorage.getItem(storageKey)
+  if (!raw) return false
+  try {
+    const parsed = JSON.parse(raw) as AccessCachePayload
+    if (!parsed?.verified || typeof parsed.expiresAt !== 'number') {
+      localStorage.removeItem(storageKey)
+      return false
+    }
+    if (Date.now() > parsed.expiresAt) {
+      localStorage.removeItem(storageKey)
+      return false
+    }
+    return true
+  } catch {
+    localStorage.removeItem(storageKey)
+    return false
+  }
+}
+
+function writeAccessCache(storageKey: string) {
+  const payload: AccessCachePayload = {
+    verified: true,
+    expiresAt: Date.now() + ACCESS_CACHE_TTL_MS,
+  }
+  localStorage.setItem(storageKey, JSON.stringify(payload))
+}
 
 export function App() {
   const [checkingAccess, setCheckingAccess] = useState(true)
@@ -36,7 +70,7 @@ export function App() {
         const envValue = String(config.env || 'local')
         setAccessEnv(envValue)
         const storageKey = `${ACCESS_STORAGE_PREFIX}${envValue}`
-        const hasLocalToken = sessionStorage.getItem(storageKey) === 'ok'
+        const hasLocalToken = readAccessCache(storageKey)
         if (!config.requirePassword || hasLocalToken) {
           setIsAuthorized(true)
         } else {
@@ -73,7 +107,7 @@ export function App() {
         throw new Error('密码验证失败')
       }
       const storageKey = `${ACCESS_STORAGE_PREFIX}${accessEnv}`
-      sessionStorage.setItem(storageKey, 'ok')
+      writeAccessCache(storageKey)
       setIsAuthorized(true)
       setPasswordInput('')
     } catch (error) {
