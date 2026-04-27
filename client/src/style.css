@@ -1107,11 +1107,43 @@ button:focus-visible {
 }
 
 .am-page {
-  max-width: 720px;
+  max-width: 1100px;
   margin: 0 auto;
   display: grid;
   gap: 8px;
   color: #111827;
+}
+
+.am-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.am-column {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.am-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.am-column-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.am-column-header span {
+  font-size: 12px;
+  color: #64748b;
 }
 
 .am-header {
@@ -1538,6 +1570,10 @@ button:focus-visible {
   }
 
   .am-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .am-columns {
     grid-template-columns: 1fr;
   }
 

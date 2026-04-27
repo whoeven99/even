@@ -98,6 +98,37 @@ export function AssetManagerPage() {
       .filter((group) => group.items.length > 0)
   }, [groupSummaries, hideZeroAmount, keyword, selectedGroupId])
 
+  const splitColumns = useMemo(() => {
+    const assetGroups = filteredGroups
+      .map((group) => {
+        const items = group.items.filter((item) => item.amount >= 0)
+        return {
+          ...group,
+          items,
+          total: items.reduce((sum, item) => sum + item.amount, 0),
+        }
+      })
+      .filter((group) => group.items.length > 0)
+
+    const debtGroups = filteredGroups
+      .map((group) => {
+        const items = group.items.filter((item) => item.amount < 0)
+        return {
+          ...group,
+          items,
+          total: items.reduce((sum, item) => sum + item.amount, 0),
+        }
+      })
+      .filter((group) => group.items.length > 0)
+
+    return {
+      assetGroups,
+      debtGroups,
+      assetCount: assetGroups.reduce((sum, group) => sum + group.items.length, 0),
+      debtCount: debtGroups.reduce((sum, group) => sum + group.items.length, 0),
+    }
+  }, [filteredGroups])
+
   const visibleItemCount = filteredGroups.reduce((sum, group) => sum + group.items.length, 0)
   const totalItemCount = groupSummaries.reduce((sum, group) => sum + group.count, 0)
 
@@ -385,64 +416,138 @@ export function AssetManagerPage() {
         </p>
       </section>
 
-      <div className="am-list">
-        {filteredGroups.length ? (
-          filteredGroups.map((group) => (
-            <section key={group.id} className="am-group">
-              <header className="am-group-header">
-                <button type="button" className="am-group-title" onClick={() => toggleGroup(group.id)}>
-                  <h3>{group.title}</h3>
-                  <small>{collapsedMap[group.id] ? '展开' : '收起'}</small>
-                </button>
-                <span>{formatAmount(group.total)}</span>
-              </header>
+      <div className="am-columns">
+        <section className="am-column">
+          <header className="am-column-header">
+            <h3>资产</h3>
+            <span>{splitColumns.assetCount} 条</span>
+          </header>
+          <div className="am-list">
+            {splitColumns.assetGroups.length ? (
+              splitColumns.assetGroups.map((group) => (
+                <section key={`asset-${group.id}`} className="am-group">
+                  <header className="am-group-header">
+                    <button type="button" className="am-group-title" onClick={() => toggleGroup(group.id)}>
+                      <h3>{group.title}</h3>
+                      <small>{collapsedMap[group.id] ? '展开' : '收起'}</small>
+                    </button>
+                    <span>{formatAmount(group.total)}</span>
+                  </header>
 
-              {!collapsedMap[group.id] ? (
-                <ul className="am-items">
-                  {group.items.map((item) => (
-                    <li key={item.id} className="am-item">
-                      <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
-                      <div className="am-item-text">
-                        <p>{item.name}</p>
-                        {item.note ? <small>{item.note}</small> : null}
-                      </div>
-                      {editingItemId === item.id ? (
-                        <input
-                          className="am-amount-input"
-                          value={editingAmount}
-                          autoFocus
-                          onChange={(event) => setEditingAmount(event.target.value)}
-                          onBlur={() => saveAmountEdit(item.id)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              saveAmountEdit(item.id)
-                            }
-                            if (event.key === 'Escape') {
-                              setEditingItemId(null)
-                              setEditingAmount('')
-                            }
-                          }}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className={`am-amount-btn ${item.amount < 0 ? 'am-item-amount-negative' : ''}`}
-                          onClick={() => startAmountEdit(item)}
-                          title="点击编辑金额"
-                        >
-                          {formatAmount(item.amount)}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-          ))
-        ) : (
-          <p className="am-empty">没有匹配的账户，请调整筛选条件。</p>
-        )}
+                  {!collapsedMap[group.id] ? (
+                    <ul className="am-items">
+                      {group.items.map((item) => (
+                        <li key={item.id} className="am-item">
+                          <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
+                          <div className="am-item-text">
+                            <p>{item.name}</p>
+                            {item.note ? <small>{item.note}</small> : null}
+                          </div>
+                          {editingItemId === item.id ? (
+                            <input
+                              className="am-amount-input"
+                              value={editingAmount}
+                              autoFocus
+                              onChange={(event) => setEditingAmount(event.target.value)}
+                              onBlur={() => saveAmountEdit(item.id)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault()
+                                  saveAmountEdit(item.id)
+                                }
+                                if (event.key === 'Escape') {
+                                  setEditingItemId(null)
+                                  setEditingAmount('')
+                                }
+                              }}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className={`am-amount-btn ${item.amount < 0 ? 'am-item-amount-negative' : ''}`}
+                              onClick={() => startAmountEdit(item)}
+                              title="点击编辑金额"
+                            >
+                              {formatAmount(item.amount)}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))
+            ) : (
+              <p className="am-empty">当前筛选条件下暂无资产项。</p>
+            )}
+          </div>
+        </section>
+
+        <section className="am-column">
+          <header className="am-column-header">
+            <h3>负债</h3>
+            <span>{splitColumns.debtCount} 条</span>
+          </header>
+          <div className="am-list">
+            {splitColumns.debtGroups.length ? (
+              splitColumns.debtGroups.map((group) => (
+                <section key={`debt-${group.id}`} className="am-group">
+                  <header className="am-group-header">
+                    <button type="button" className="am-group-title" onClick={() => toggleGroup(group.id)}>
+                      <h3>{group.title}</h3>
+                      <small>{collapsedMap[group.id] ? '展开' : '收起'}</small>
+                    </button>
+                    <span>{formatAmount(group.total)}</span>
+                  </header>
+
+                  {!collapsedMap[group.id] ? (
+                    <ul className="am-items">
+                      {group.items.map((item) => (
+                        <li key={item.id} className="am-item">
+                          <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
+                          <div className="am-item-text">
+                            <p>{item.name}</p>
+                            {item.note ? <small>{item.note}</small> : null}
+                          </div>
+                          {editingItemId === item.id ? (
+                            <input
+                              className="am-amount-input"
+                              value={editingAmount}
+                              autoFocus
+                              onChange={(event) => setEditingAmount(event.target.value)}
+                              onBlur={() => saveAmountEdit(item.id)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault()
+                                  saveAmountEdit(item.id)
+                                }
+                                if (event.key === 'Escape') {
+                                  setEditingItemId(null)
+                                  setEditingAmount('')
+                                }
+                              }}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className={`am-amount-btn ${item.amount < 0 ? 'am-item-amount-negative' : ''}`}
+                              onClick={() => startAmountEdit(item)}
+                              title="点击编辑金额"
+                            >
+                              {formatAmount(item.amount)}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))
+            ) : (
+              <p className="am-empty">当前筛选条件下暂无负债项。</p>
+            )}
+          </div>
+        </section>
       </div>
     </section>
   )
