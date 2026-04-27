@@ -12,6 +12,7 @@ const {
   listBillStages,
   deleteBillStage,
 } = require('./billAiParse')
+const { getAssets, updateAssets } = require('./assetStore')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -141,6 +142,31 @@ api.delete('/bills/stages/:stageId', async (req, res) => {
     res.status(500).json({
       ok: false,
       message: error instanceof Error ? error.message : '删除暂存失败',
+    })
+  }
+})
+
+api.get('/assets', async (_req, res) => {
+  try {
+    const data = await getAssets()
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '资产读取失败',
+    })
+  }
+})
+
+api.put('/assets', async (req, res) => {
+  const groups = req.body?.groups
+  try {
+    const data = await updateAssets(groups)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '资产更新失败',
     })
   }
 })

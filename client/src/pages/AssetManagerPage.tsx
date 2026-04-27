@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { requestWithFetch } from '../services/http'
 
 type AccountItem = {
   id: string
@@ -15,67 +16,11 @@ type AccountGroup = {
   items: AccountItem[]
 }
 
-const initialGroups: AccountGroup[] = [
-  {
-    id: 'bank-card',
-    title: '储蓄卡',
-    items: [
-      { id: 'boc', name: '中国银行', note: '13760 + 3000 港币', amount: 18000, icon: '◎', tone: 'red' },
-      { id: 'cmb', name: '招商银行', amount: 24000, icon: 'M', tone: 'red' },
-      { id: 'cmbc', name: '民生银行', note: '房贷卡', amount: 2000, icon: '▬', tone: 'gold' },
-      { id: 'szbank', name: '苏州银行', note: '社保卡', amount: 160240, icon: '▬', tone: 'gold' },
-    ],
-  },
-  {
-    id: 'virtual',
-    title: '虚拟账户',
-    items: [
-      { id: 'alipay-gold', name: '支付宝', note: '黄金', amount: 25403, icon: '支', tone: 'blue' },
-      { id: 'alipay-yeb', name: '支付宝', note: '余额宝', amount: 3481, icon: '支', tone: 'blue' },
-    ],
-  },
-  {
-    id: 'invest',
-    title: '投资账户',
-    items: [
-      { id: 'stock-a', name: '股票', note: 'A 股 9w', amount: 82484, icon: '◍', tone: 'gold' },
-      { id: 'stock-hkd', name: '股票', note: '港币 25w，显示人民币', amount: 250000, icon: '◍', tone: 'gold' },
-    ],
-  },
-  {
-    id: 'debt',
-    title: '负债',
-    items: [
-      { id: 'debt-baiyao', name: '柏药', amount: -400000, icon: '▭', tone: 'red' },
-      { id: 'debt-zonghang', name: '宗航', amount: -10000, icon: '▭', tone: 'red' },
-      { id: 'debt-cmb', name: '招商闪电贷', amount: -400000, icon: '▭', tone: 'red' },
-      { id: 'debt-minsheng', name: '民生', note: '26-4-9 之前', amount: -200000, icon: '▭', tone: 'red' },
-      { id: 'debt-business', name: '商业贷', note: '8333.88', amount: 0, icon: '▭', tone: 'red' },
-      { id: 'debt-gjj', name: '公积金贷', note: '5318.16', amount: 0, icon: '▭', tone: 'red' },
-      { id: 'debt-car', name: '零跑车', note: '120000', amount: -108000, icon: '▭', tone: 'red' },
-      { id: 'debt-chengjia', name: '成佳', amount: -100000, icon: '▭', tone: 'red' },
-    ],
-  },
-  {
-    id: 'credit-rights',
-    title: '债权',
-    items: [
-      { id: 'right-hzjd', name: '杭州建德', amount: 150000, icon: '◔', tone: 'blue' },
-      { id: 'right-loan', name: '借出', amount: 200000, icon: '◔', tone: 'blue' },
-      { id: 'right-szhouse', name: '苏州房子', note: '350w - 300w', amount: 0, icon: '◔', tone: 'blue' },
-      { id: 'right-zhujie', name: '竹巷街', note: '房子年底卖 40w', amount: 400000, icon: '◔', tone: 'blue' },
-    ],
-  },
-  {
-    id: 'custom-assets',
-    title: '自定义资产',
-    items: [
-      { id: 'custom-hz', name: '杭州', note: '9000', amount: 0, icon: '◉', tone: 'purple' },
-      { id: 'custom-gold', name: '黄金实物', note: '成本 7580', amount: 9700, icon: '◉', tone: 'purple' },
-      { id: 'custom-silver', name: '白银实物', note: '成本 500', amount: 500, icon: '◉', tone: 'purple' },
-    ],
-  },
-]
+type AssetsResponse = {
+  ok: boolean
+  groups: AccountGroup[]
+  updatedAt: string | null
+}
 
 function formatAmount(value: number) {
   return value.toLocaleString('zh-CN', {
@@ -85,17 +30,22 @@ function formatAmount(value: number) {
 }
 
 export function AssetManagerPage() {
-  const [groups, setGroups] = useState<AccountGroup[]>(initialGroups)
+  const [groups, setGroups] = useState<AccountGroup[]>([])
   const [keyword, setKeyword] = useState('')
   const [selectedGroupId, setSelectedGroupId] = useState('all')
   const [hideZeroAmount, setHideZeroAmount] = useState(false)
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({})
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
   const [addError, setAddError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editingAmount, setEditingAmount] = useState('')
   const [addDraft, setAddDraft] = useState({
-    groupId: initialGroups[0]?.id || '',
+    groupId: '',
+    groupTitle: '',
     name: '',
     note: '',
     amount: '',
@@ -151,6 +101,44 @@ export function AssetManagerPage() {
   const visibleItemCount = filteredGroups.reduce((sum, group) => sum + group.items.length, 0)
   const totalItemCount = groupSummaries.reduce((sum, group) => sum + group.count, 0)
 
+  async function loadAssets() {
+    setIsLoading(true)
+    setLoadError('')
+    try {
+      const data = await requestWithFetch<AssetsResponse>('/api/assets')
+      const loadedGroups = Array.isArray(data.groups) ? data.groups : []
+      setGroups(loadedGroups)
+      setAddDraft((prev) => ({
+        ...prev,
+        groupId: loadedGroups[0]?.id || '',
+      }))
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : '加载失败')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadAssets()
+  }, [])
+
+  async function persistGroups(nextGroups: AccountGroup[]) {
+    setIsSaving(true)
+    setSaveError('')
+    try {
+      const data = await requestWithFetch<AssetsResponse>('/api/assets', {
+        method: 'PUT',
+        body: JSON.stringify({ groups: nextGroups }),
+      })
+      setGroups(Array.isArray(data.groups) ? data.groups : nextGroups)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : '保存失败')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   function toggleGroup(id: string) {
     setCollapsedMap((prev) => ({ ...prev, [id]: !prev[id] }))
   }
@@ -162,12 +150,83 @@ export function AssetManagerPage() {
   }
 
   function updateItemAmount(itemId: string, amount: number) {
-    setGroups((prev) =>
-      prev.map((group) => ({
-        ...group,
-        items: group.items.map((item) => (item.id === itemId ? { ...item, amount } : item)),
-      })),
-    )
+    const nextGroups = groups.map((group) => ({
+      ...group,
+      items: group.items.map((item) => (item.id === itemId ? { ...item, amount } : item)),
+    }))
+    setGroups(nextGroups)
+    void persistGroups(nextGroups)
+  }
+
+  function ensureSelectedGroup() {
+    if (groupSummaries.length && !addDraft.groupId) {
+      setAddDraft((prev) => ({ ...prev, groupId: groupSummaries[0].id }))
+    }
+  }
+
+  useEffect(() => {
+    ensureSelectedGroup()
+  }, [groupSummaries.length, addDraft.groupId])
+
+  function createGroupIdFromTitle(title: string) {
+    const compact = title.trim().toLowerCase().replace(/\s+/g, '-')
+    const safe = compact.replace(/[^a-z0-9-\u4e00-\u9fa5]/g, '')
+    return safe || `group-${Date.now()}`
+  }
+
+  function addAsset() {
+    const name = addDraft.name.trim()
+    const amount = Number(addDraft.amount.trim())
+    if (!name) return setAddError('资产名称必填')
+    if (Number.isNaN(amount)) return setAddError('金额格式不正确')
+
+    let targetGroupId = addDraft.groupId
+    const hasGroup = groupSummaries.some((group) => group.id === targetGroupId)
+    const shouldCreateGroup = !hasGroup
+    const newGroupTitle = addDraft.groupTitle.trim()
+    if (shouldCreateGroup && !newGroupTitle) {
+      return setAddError('当前没有分组，请先填写分组名称')
+    }
+
+    const newAsset: AccountItem = {
+      id: `asset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      note: addDraft.note.trim() || undefined,
+      amount,
+      icon: addDraft.icon.trim() || '◎',
+      tone: addDraft.tone,
+    }
+
+    let nextGroups: AccountGroup[] = []
+    if (shouldCreateGroup) {
+      const newGroupId = createGroupIdFromTitle(newGroupTitle)
+      targetGroupId = newGroupId
+      nextGroups = [
+        ...groups,
+        {
+          id: newGroupId,
+          title: newGroupTitle,
+          items: [newAsset],
+        },
+      ]
+    } else {
+      nextGroups = groups.map((group) =>
+        group.id === targetGroupId ? { ...group, items: [...group.items, newAsset] } : group,
+      )
+    }
+    setGroups(nextGroups)
+    setSelectedGroupId(targetGroupId || 'all')
+    setAddError('')
+    setIsAddFormOpen(false)
+    setAddDraft((prev) => ({
+      ...prev,
+      groupId: targetGroupId,
+      groupTitle: '',
+      name: '',
+      note: '',
+      amount: '',
+    }))
+    void persistGroups(nextGroups)
   }
 
   function startAmountEdit(item: AccountItem) {
@@ -181,33 +240,6 @@ export function AssetManagerPage() {
     updateItemAmount(itemId, parsed)
     setEditingItemId(null)
     setEditingAmount('')
-  }
-
-  function addAsset() {
-    const name = addDraft.name.trim()
-    const amount = Number(addDraft.amount.trim())
-    if (!name) return setAddError('资产名称必填')
-    if (Number.isNaN(amount)) return setAddError('金额格式不正确')
-    if (!addDraft.groupId) return setAddError('请选择分组')
-
-    const newAsset: AccountItem = {
-      id: `asset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name,
-      note: addDraft.note.trim() || undefined,
-      amount,
-      icon: addDraft.icon.trim() || '◎',
-      tone: addDraft.tone,
-    }
-
-    setGroups((prev) =>
-      prev.map((group) =>
-        group.id === addDraft.groupId ? { ...group, items: [...group.items, newAsset] } : group,
-      ),
-    )
-    setSelectedGroupId(addDraft.groupId)
-    setAddError('')
-    setIsAddFormOpen(false)
-    setAddDraft((prev) => ({ ...prev, name: '', note: '', amount: '' }))
   }
 
   return (
@@ -229,6 +261,9 @@ export function AssetManagerPage() {
           <button type="button" className="am-icon-btn" aria-label="重置筛选" onClick={resetFilters}>
             重置
           </button>
+          <button type="button" className="am-icon-btn" aria-label="刷新资产" onClick={() => void loadAssets()}>
+            刷新
+          </button>
         </div>
       </header>
 
@@ -249,12 +284,26 @@ export function AssetManagerPage() {
               value={addDraft.groupId}
               onChange={(event) => setAddDraft((prev) => ({ ...prev, groupId: event.target.value }))}
             >
-              {groupSummaries.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.title}
-                </option>
-              ))}
+              {groupSummaries.length ? (
+                groupSummaries.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.title}
+                  </option>
+                ))
+              ) : (
+                <option value="">无分组（将创建新分组）</option>
+              )}
             </select>
+            {!groupSummaries.length ? (
+              <input
+                className="am-search-input"
+                placeholder="新分组名称"
+                value={addDraft.groupTitle}
+                onChange={(event) =>
+                  setAddDraft((prev) => ({ ...prev, groupTitle: event.target.value, groupId: '' }))
+                }
+              />
+            ) : null}
             <input
               className="am-search-input"
               placeholder="资产名称"
@@ -300,6 +349,10 @@ export function AssetManagerPage() {
             {addError ? <p className="am-error">{addError}</p> : null}
           </div>
         ) : null}
+        {isLoading ? <p className="am-tools-tip">资产加载中...</p> : null}
+        {isSaving ? <p className="am-tools-tip">保存中...</p> : null}
+        {loadError ? <p className="am-error">资产加载失败：{loadError}</p> : null}
+        {saveError ? <p className="am-error">资产保存失败：{saveError}</p> : null}
 
         <input
           className="am-search-input"
