@@ -173,7 +173,7 @@ api.get('/weather/recent', async (req, res) => {
   const cityRaw = req.query?.city
   const city = typeof cityRaw === 'string' && cityRaw.trim() ? cityRaw.trim() : '杭州'
   const daysRaw = req.query?.days
-  const days = typeof daysRaw === 'string' ? Number(daysRaw) : 5
+  const days = typeof daysRaw === 'string' ? Number(daysRaw) : 3
   try {
     const weather = await queryRecentWeatherDays(city, days)
     res.json({ ok: true, ...weather })

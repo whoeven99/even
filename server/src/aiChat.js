@@ -242,7 +242,7 @@ async function queryRecentWeatherDaysByOpenMeteo(city, days) {
   }
 }
 
-async function queryRecentWeatherDays(city, days = 5) {
+async function queryRecentWeatherDays(city, days = 3) {
   const safeDays = Math.max(1, Math.min(7, Number(days) || 5))
   let resolved = null
   let rows = []
