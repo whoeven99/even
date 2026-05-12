@@ -31,9 +31,8 @@ function formatAmount(value: number) {
 
 export function AssetManagerPage() {
   const [groups, setGroups] = useState<AccountGroup[]>([])
-  const [keyword, setKeyword] = useState('')
-  const [selectedGroupId, setSelectedGroupId] = useState('all')
-  const [hideZeroAmount, setHideZeroAmount] = useState(false)
+  const [isDeleteEditMode, setIsDeleteEditMode] = useState(false)
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({})
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
   const [addError, setAddError] = useState('')
@@ -78,25 +77,7 @@ export function AssetManagerPage() {
     }
   }, [groups])
 
-  const filteredGroups = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase()
-
-    return groupSummaries
-      .filter((group) => selectedGroupId === 'all' || group.id === selectedGroupId)
-      .map((group) => {
-        const items = group.items.filter((item) => {
-          if (hideZeroAmount && item.amount === 0) return false
-          if (!normalizedKeyword) return true
-          return `${item.name} ${item.note || ''}`.toLowerCase().includes(normalizedKeyword)
-        })
-        return {
-          ...group,
-          items,
-          total: items.reduce((sum, item) => sum + item.amount, 0),
-        }
-      })
-      .filter((group) => group.items.length > 0)
-  }, [groupSummaries, hideZeroAmount, keyword, selectedGroupId])
+  const filteredGroups = groupSummaries
 
   const splitColumns = useMemo(() => {
     const assetGroups = filteredGroups
@@ -129,9 +110,6 @@ export function AssetManagerPage() {
     }
   }, [filteredGroups])
 
-  const visibleItemCount = filteredGroups.reduce((sum, group) => sum + group.items.length, 0)
-  const totalItemCount = groupSummaries.reduce((sum, group) => sum + group.count, 0)
-
   async function loadAssets() {
     setIsLoading(true)
     setLoadError('')
@@ -139,6 +117,8 @@ export function AssetManagerPage() {
       const data = await requestWithFetch<AssetsResponse>('/api/assets')
       const loadedGroups = Array.isArray(data.groups) ? data.groups : []
       setGroups(loadedGroups)
+      setIsDeleteEditMode(false)
+      setSelectedItemIds([])
       setAddDraft((prev) => ({
         ...prev,
         groupId: loadedGroups[0]?.id || '',
@@ -174,18 +154,40 @@ export function AssetManagerPage() {
     setCollapsedMap((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  function resetFilters() {
-    setKeyword('')
-    setSelectedGroupId('all')
-    setHideZeroAmount(false)
-  }
-
   function updateItemAmount(itemId: string, amount: number) {
     const nextGroups = groups.map((group) => ({
       ...group,
       items: group.items.map((item) => (item.id === itemId ? { ...item, amount } : item)),
     }))
     setGroups(nextGroups)
+    void persistGroups(nextGroups)
+  }
+
+  function toggleItemSelection(itemId: string) {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
+    )
+  }
+
+  function toggleDeleteEditMode() {
+    if (isDeleteEditMode) {
+      setIsDeleteEditMode(false)
+      setSelectedItemIds([])
+      return
+    }
+    setIsDeleteEditMode(true)
+  }
+
+  function deleteSelectedItems() {
+    if (!selectedItemIds.length) return
+    const selectedSet = new Set(selectedItemIds)
+    const nextGroups = groups.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !selectedSet.has(item.id)),
+    }))
+    setGroups(nextGroups)
+    setIsDeleteEditMode(false)
+    setSelectedItemIds([])
     void persistGroups(nextGroups)
   }
 
@@ -246,7 +248,6 @@ export function AssetManagerPage() {
       )
     }
     setGroups(nextGroups)
-    setSelectedGroupId(targetGroupId || 'all')
     setAddError('')
     setIsAddFormOpen(false)
     setAddDraft((prev) => ({
@@ -273,6 +274,8 @@ export function AssetManagerPage() {
     setEditingAmount('')
   }
 
+  const shouldShowToolsPanel = isAddFormOpen || isLoading || isSaving || Boolean(loadError) || Boolean(saveError)
+
   return (
     <section className="page-shell am-page">
       <header className="am-header page-hero page-hero-inline">
@@ -289,12 +292,29 @@ export function AssetManagerPage() {
           >
             添加资产
           </button>
-          <button type="button" className="am-icon-btn" aria-label="重置筛选" onClick={resetFilters}>
-            重置
-          </button>
           <button type="button" className="am-icon-btn" aria-label="刷新资产" onClick={() => void loadAssets()}>
             刷新
           </button>
+          <button
+            type="button"
+            className="am-icon-btn"
+            aria-label={isDeleteEditMode ? '取消删除编辑' : '删除编辑'}
+            onClick={toggleDeleteEditMode}
+            disabled={isSaving}
+          >
+            {isDeleteEditMode ? '取消' : '编辑'}
+          </button>
+          {isDeleteEditMode ? (
+            <button
+              type="button"
+              className="am-icon-btn am-icon-btn-danger"
+              aria-label="删除已选资产"
+              onClick={deleteSelectedItems}
+              disabled={!selectedItemIds.length || isSaving}
+            >
+              删除已选{selectedItemIds.length ? ` (${selectedItemIds.length})` : ''}
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -307,114 +327,86 @@ export function AssetManagerPage() {
         </div>
       </article>
 
-      <section className="am-tools">
-        {isAddFormOpen ? (
-          <div className="am-add-form">
-            <select
-              className="am-select"
-              value={addDraft.groupId}
-              onChange={(event) => setAddDraft((prev) => ({ ...prev, groupId: event.target.value }))}
-            >
-              {groupSummaries.length ? (
-                groupSummaries.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.title}
-                  </option>
-                ))
-              ) : (
-                <option value="">无分组（将创建新分组）</option>
-              )}
-            </select>
-            {!groupSummaries.length ? (
+      {shouldShowToolsPanel ? (
+        <section className="am-tools">
+          {isAddFormOpen ? (
+            <div className="am-add-form">
+              <select
+                className="am-select"
+                value={addDraft.groupId}
+                onChange={(event) => setAddDraft((prev) => ({ ...prev, groupId: event.target.value }))}
+              >
+                {groupSummaries.length ? (
+                  groupSummaries.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.title}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">无分组（将创建新分组）</option>
+                )}
+              </select>
+              {!groupSummaries.length ? (
+                <input
+                  className="am-search-input"
+                  placeholder="新分组名称"
+                  value={addDraft.groupTitle}
+                  onChange={(event) =>
+                    setAddDraft((prev) => ({ ...prev, groupTitle: event.target.value, groupId: '' }))
+                  }
+                />
+              ) : null}
               <input
                 className="am-search-input"
-                placeholder="新分组名称"
-                value={addDraft.groupTitle}
-                onChange={(event) =>
-                  setAddDraft((prev) => ({ ...prev, groupTitle: event.target.value, groupId: '' }))
-                }
+                placeholder="资产名称"
+                value={addDraft.name}
+                onChange={(event) => setAddDraft((prev) => ({ ...prev, name: event.target.value }))}
               />
-            ) : null}
-            <input
-              className="am-search-input"
-              placeholder="资产名称"
-              value={addDraft.name}
-              onChange={(event) => setAddDraft((prev) => ({ ...prev, name: event.target.value }))}
-            />
-            <input
-              className="am-search-input"
-              placeholder="备注（可选）"
-              value={addDraft.note}
-              onChange={(event) => setAddDraft((prev) => ({ ...prev, note: event.target.value }))}
-            />
-            <input
-              className="am-search-input"
-              placeholder="金额（负债填负数）"
-              value={addDraft.amount}
-              onChange={(event) => setAddDraft((prev) => ({ ...prev, amount: event.target.value }))}
-            />
-            <input
-              className="am-search-input"
-              placeholder="图标字符（可选）"
-              value={addDraft.icon}
-              onChange={(event) => setAddDraft((prev) => ({ ...prev, icon: event.target.value }))}
-            />
-            <select
-              className="am-select"
-              value={addDraft.tone}
-              onChange={(event) =>
-                setAddDraft((prev) => ({
-                  ...prev,
-                  tone: event.target.value as AccountItem['tone'],
-                }))
-              }
-            >
-              <option value="blue">蓝色</option>
-              <option value="red">红色</option>
-              <option value="gold">金色</option>
-              <option value="purple">紫色</option>
-            </select>
-            <button type="button" className="am-add-submit" onClick={addAsset}>
-              确认添加
-            </button>
-            {addError ? <p className="am-error">{addError}</p> : null}
-          </div>
-        ) : null}
-        {isLoading ? <p className="am-tools-tip">资产加载中...</p> : null}
-        {isSaving ? <p className="am-tools-tip">保存中...</p> : null}
-        {loadError ? <p className="am-error">资产加载失败：{loadError}</p> : null}
-        {saveError ? <p className="am-error">资产保存失败：{saveError}</p> : null}
-
-        <input
-          className="am-search-input"
-          placeholder="搜索账户名称或备注"
-          value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
-        />
-        <select
-          className="am-select"
-          value={selectedGroupId}
-          onChange={(event) => setSelectedGroupId(event.target.value)}
-        >
-          <option value="all">全部分组</option>
-          {groupSummaries.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.title}
-            </option>
-          ))}
-        </select>
-        <label className="am-checkbox">
-          <input
-            type="checkbox"
-            checked={hideZeroAmount}
-            onChange={(event) => setHideZeroAmount(event.target.checked)}
-          />
-          <span>隐藏金额为 0</span>
-        </label>
-        <p className="am-tools-tip">
-          当前显示 {visibleItemCount}/{totalItemCount} 条账户
-        </p>
-      </section>
+              <input
+                className="am-search-input"
+                placeholder="备注（可选）"
+                value={addDraft.note}
+                onChange={(event) => setAddDraft((prev) => ({ ...prev, note: event.target.value }))}
+              />
+              <input
+                className="am-search-input"
+                placeholder="金额（负债填负数）"
+                value={addDraft.amount}
+                onChange={(event) => setAddDraft((prev) => ({ ...prev, amount: event.target.value }))}
+              />
+              <input
+                className="am-search-input"
+                placeholder="图标字符（可选）"
+                value={addDraft.icon}
+                onChange={(event) => setAddDraft((prev) => ({ ...prev, icon: event.target.value }))}
+              />
+              <select
+                className="am-select"
+                value={addDraft.tone}
+                onChange={(event) =>
+                  setAddDraft((prev) => ({
+                    ...prev,
+                    tone: event.target.value as AccountItem['tone'],
+                  }))
+                }
+              >
+                <option value="blue">蓝色</option>
+                <option value="red">红色</option>
+                <option value="gold">金色</option>
+                <option value="purple">紫色</option>
+              </select>
+              <button type="button" className="am-add-submit" onClick={addAsset}>
+                确认添加
+              </button>
+              {addError ? <p className="am-error">{addError}</p> : null}
+            </div>
+          ) : null}
+          {isLoading ? <p className="am-tools-tip">资产加载中...</p> : null}
+          {isSaving ? <p className="am-tools-tip">保存中...</p> : null}
+          {loadError ? <p className="am-error">资产加载失败：{loadError}</p> : null}
+          {saveError ? <p className="am-error">资产保存失败：{saveError}</p> : null}
+        </section>
+      ) : null}
 
       <div className="am-columns">
         <section className="am-column">
@@ -437,7 +429,16 @@ export function AssetManagerPage() {
                   {!collapsedMap[group.id] ? (
                     <ul className="am-items">
                       {group.items.map((item) => (
-                        <li key={item.id} className="am-item">
+                        <li key={item.id} className={`am-item ${isDeleteEditMode ? 'am-item-selectable' : ''}`}>
+                          {isDeleteEditMode ? (
+                            <label className="am-item-check" aria-label={`选择${item.name}`}>
+                              <input
+                                type="checkbox"
+                                checked={selectedItemIds.includes(item.id)}
+                                onChange={() => toggleItemSelection(item.id)}
+                              />
+                            </label>
+                          ) : null}
                           <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
                           <div className="am-item-text">
                             <p>{item.name}</p>
@@ -503,7 +504,16 @@ export function AssetManagerPage() {
                   {!collapsedMap[group.id] ? (
                     <ul className="am-items">
                       {group.items.map((item) => (
-                        <li key={item.id} className="am-item">
+                        <li key={item.id} className={`am-item ${isDeleteEditMode ? 'am-item-selectable' : ''}`}>
+                          {isDeleteEditMode ? (
+                            <label className="am-item-check" aria-label={`选择${item.name}`}>
+                              <input
+                                type="checkbox"
+                                checked={selectedItemIds.includes(item.id)}
+                                onChange={() => toggleItemSelection(item.id)}
+                              />
+                            </label>
+                          ) : null}
                           <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
                           <div className="am-item-text">
                             <p>{item.name}</p>

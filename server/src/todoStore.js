@@ -50,16 +50,41 @@ function sanitizeTodoText(text) {
   return normalized
 }
 
+function normalizeTodoTime(time, fallbackIso) {
+  if (time === undefined || time === null || String(time).trim() === '') {
+    return fallbackIso
+  }
+  const parsed = new Date(String(time))
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('时间格式不正确')
+  }
+  return parsed.toISOString()
+}
+
+function buildTodayStartIso() {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  return date.toISOString()
+}
+
 function sanitizeTodoItem(item) {
   const id = String(item?.id || '').trim()
   const text = String(item?.text || '').trim()
   if (!id || !text) return null
+  const parsedOrder = Number(item?.order)
+  const order = Number.isFinite(parsedOrder) ? parsedOrder : null
+  const time =
+    typeof item?.time === 'string' && item.time.trim()
+      ? item.time.trim()
+      : String(item?.createdAt || item?.updatedAt || '')
   return {
     id,
     text,
     done: Boolean(item?.done),
     createdAt: String(item?.createdAt || ''),
     updatedAt: String(item?.updatedAt || ''),
+    time,
+    order,
   }
 }
 
@@ -91,10 +116,21 @@ async function readTodoDoc() {
 }
 
 function sortTodos(items) {
-  return [...items].sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1
-    return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
-  })
+  return [...items]
+    .sort((a, b) => {
+      const timeA = new Date(String(a.time || a.createdAt || a.updatedAt || '')).getTime()
+      const timeB = new Date(String(b.time || b.createdAt || b.updatedAt || '')).getTime()
+      const validA = Number.isFinite(timeA)
+      const validB = Number.isFinite(timeB)
+      if (validA && validB && timeA !== timeB) return timeA - timeB
+      if (validA !== validB) return validA ? -1 : 1
+      if (a.done !== b.done) return a.done ? 1 : -1
+      return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+    })
+    .map((item, index) => ({
+      ...item,
+      order: index,
+    }))
 }
 
 async function getTodos() {
@@ -105,18 +141,22 @@ async function getTodos() {
   }
 }
 
-async function createTodo(text) {
+async function createTodo(text, time) {
   const normalizedText = sanitizeTodoText(text)
   const { container, doc } = await readTodoDoc()
   const now = new Date().toISOString()
+  const normalizedTime = normalizeTodoTime(time, buildTodayStartIso())
+  const sortedExisting = sortTodos(doc?.items || [])
   const nextItem = {
     id: `todo-${Date.now()}-${randomUUID().slice(0, 8)}`,
     text: normalizedText,
     done: false,
+    time: normalizedTime,
     createdAt: now,
     updatedAt: now,
+    order: -1,
   }
-  const nextItems = sortTodos([...(doc?.items || []), nextItem])
+  const nextItems = sortTodos([...sortedExisting, nextItem])
   const payload = {
     id: TODO_DOC_ID,
     pk: TODO_PK,
@@ -154,11 +194,22 @@ async function updateTodo(todoId, patch) {
       Object.prototype.hasOwnProperty.call(patch, 'done')
         ? Boolean(patch.done)
         : current.done,
+    time:
+      Object.prototype.hasOwnProperty.call(patch, 'time')
+        ? normalizeTodoTime(patch.time, current.time || now)
+        : current.time || now,
     updatedAt: now,
   }
 
-  const nextItems = [...doc.items]
-  nextItems[index] = nextItem
+  const nextItems = sortTodos([...doc.items])
+  const sortedIndex = nextItems.findIndex((item) => item.id === id)
+  if (sortedIndex < 0) throw new Error('待办不存在')
+  const sortedCurrent = nextItems[sortedIndex]
+  nextItems[sortedIndex] = {
+    ...sortedCurrent,
+    ...nextItem,
+    order: sortedCurrent.order,
+  }
   const payload = {
     id: TODO_DOC_ID,
     pk: TODO_PK,
@@ -181,7 +232,7 @@ async function deleteTodo(todoId) {
   const { container, doc } = await readTodoDoc()
   if (!doc) throw new Error('待办不存在')
 
-  const nextItems = doc.items.filter((item) => item.id !== id)
+  const nextItems = sortTodos(doc.items).filter((item) => item.id !== id)
   if (nextItems.length === doc.items.length) {
     throw new Error('待办不存在')
   }
@@ -201,9 +252,59 @@ async function deleteTodo(todoId) {
   }
 }
 
+async function reorderTodos(orderedIds) {
+  const ids = Array.isArray(orderedIds)
+    ? orderedIds.map((id) => String(id || '').trim()).filter(Boolean)
+    : []
+  if (!ids.length) {
+    throw new Error('orderedIds 不能为空')
+  }
+
+  const { container, doc } = await readTodoDoc()
+  if (!doc) throw new Error('待办不存在')
+
+  const sortedItems = sortTodos(doc.items)
+  if (ids.length !== sortedItems.length) {
+    throw new Error('orderedIds 数量与待办数量不一致')
+  }
+  const unique = new Set(ids)
+  if (unique.size !== ids.length) {
+    throw new Error('orderedIds 不能包含重复 id')
+  }
+
+  const itemById = new Map(sortedItems.map((item) => [item.id, item]))
+  const missingIds = ids.filter((id) => !itemById.has(id))
+  if (missingIds.length) {
+    throw new Error(`orderedIds 包含无效 id: ${missingIds.join(', ')}`)
+  }
+  const extraIds = sortedItems.map((item) => item.id).filter((id) => !unique.has(id))
+  if (extraIds.length) {
+    throw new Error(`orderedIds 缺少 id: ${extraIds.join(', ')}`)
+  }
+
+  const nextItems = ids.map((id, index) => ({
+    ...itemById.get(id),
+    order: index,
+  }))
+  const now = new Date().toISOString()
+  const payload = {
+    id: TODO_DOC_ID,
+    pk: TODO_PK,
+    items: nextItems,
+    updatedAt: now,
+  }
+  const result = await container.items.upsert(payload)
+  const resourceItems = Array.isArray(result?.resource?.items) ? result.resource.items : payload.items
+  return {
+    items: sortTodos(resourceItems.map(sanitizeTodoItem).filter(Boolean)),
+    updatedAt: result?.resource?.updatedAt || now,
+  }
+}
+
 module.exports = {
   getTodos,
   createTodo,
   updateTodo,
   deleteTodo,
+  reorderTodos,
 }

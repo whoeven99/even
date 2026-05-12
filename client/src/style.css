@@ -518,7 +518,7 @@ button:focus-visible {
 
 .todo-create-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 180px auto;
   gap: 10px;
   align-items: center;
   margin-bottom: 10px;
@@ -532,6 +532,10 @@ button:focus-visible {
   font-size: 14px;
   background: #fff;
   color: #0f172a;
+}
+
+.todo-time-input {
+  min-width: 0;
 }
 
 .todo-list {
@@ -565,6 +569,13 @@ button:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.todo-time-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+}
+
 .todo-actions {
   display: inline-flex;
   align-items: center;
@@ -579,6 +590,33 @@ button:focus-visible {
 
 .todo-edit-input {
   min-width: 200px;
+}
+
+.todo-edit-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 8px;
+  width: 100%;
+}
+
+.todo-edit-time-input {
+  padding: 6px 8px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.todo-time-input-shell {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0;
+  cursor: text;
+}
+
+.todo-time-input-shell .todo-edit-time-input {
+  border: none;
+  border-radius: 8px;
 }
 
 .progress-track {
@@ -1180,6 +1218,16 @@ button:focus-visible {
   padding: 2px 8px;
 }
 
+.am-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.am-icon-btn-danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
 .am-summary-card {
   border-radius: 10px;
   border: 1px solid #e5e7eb;
@@ -1343,6 +1391,21 @@ button:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 6px 0;
+}
+
+.am-item-selectable {
+  grid-template-columns: 20px 32px 1fr auto;
+}
+
+.am-item-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.am-item-check input {
+  width: 14px;
+  height: 14px;
 }
 
 .am-item + .am-item {

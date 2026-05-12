@@ -29,6 +29,7 @@ type TodoItem = {
   id: string
   text: string
   done: boolean
+  time: string
   createdAt: string
   updatedAt: string
 }
@@ -47,6 +48,35 @@ function formatMmDd(dateText: string): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${month}-${day}`
+}
+
+function formatTodoTime(dateText: string): string {
+  const date = new Date(dateText)
+  if (Number.isNaN(date.getTime())) return '时间未设置'
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function toDateTimeLocalValue(dateText: string): string {
+  const date = new Date(dateText)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
+function toDateStartLocalValue(dateText: string): string {
+  const full = toDateTimeLocalValue(dateText)
+  if (!full) return ''
+  return `${full.slice(0, 10)}T00:00`
 }
 
 function buildTemperatureChart(forecast: WeatherDay[]) {
@@ -104,8 +134,10 @@ export function HomePage() {
   const [todoSaving, setTodoSaving] = useState(false)
   const [todoError, setTodoError] = useState<string | null>(null)
   const [newTodoText, setNewTodoText] = useState('')
+  const [newTodoTime, setNewTodoTime] = useState('')
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null)
   const [editingTodoText, setEditingTodoText] = useState('')
+  const [editingTodoTime, setEditingTodoTime] = useState('')
   const weatherChart = weatherData ? buildTemperatureChart(weatherData.forecast) : null
   const isMountedRef = useRef(true)
 
@@ -208,10 +240,11 @@ export function HomePage() {
     try {
       const data = await requestWithFetch<TodoApiResponse>('/api/todos', {
         method: 'POST',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, time: newTodoTime || undefined }),
       })
       setTodoItems(Array.isArray(data.items) ? data.items : [])
       setNewTodoText('')
+      setNewTodoTime('')
     } catch (error) {
       setTodoError(error instanceof Error ? error.message : '待办新增失败')
     } finally {
@@ -238,13 +271,25 @@ export function HomePage() {
   function startEditTodo(item: TodoItem) {
     setEditingTodoId(item.id)
     setEditingTodoText(item.text)
+    setEditingTodoTime(toDateStartLocalValue(item.time || item.createdAt))
   }
 
-  async function saveEditTodo(item: TodoItem) {
-    const text = editingTodoText.trim()
-    if (!text || text === item.text) {
+  async function saveEditTodo(
+    item: TodoItem,
+    draft?: {
+      text?: string
+      time?: string
+    },
+  ) {
+    const text = (draft?.text ?? editingTodoText).trim()
+    const time = (draft?.time ?? editingTodoTime).trim()
+    const normalizedCurrentTime = toDateTimeLocalValue(item.time || item.createdAt)
+    const textChanged = text && text !== item.text
+    const timeChanged = time !== normalizedCurrentTime
+    if (!text || (!textChanged && !timeChanged)) {
       setEditingTodoId(null)
       setEditingTodoText('')
+      setEditingTodoTime('')
       return
     }
     setTodoSaving(true)
@@ -252,17 +297,56 @@ export function HomePage() {
     try {
       const data = await requestWithFetch<TodoApiResponse>(`/api/todos/${encodeURIComponent(item.id)}`, {
         method: 'PUT',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text,
+          time: time || undefined,
+        }),
       })
       setTodoItems(Array.isArray(data.items) ? data.items : [])
       setEditingTodoId(null)
       setEditingTodoText('')
+      setEditingTodoTime('')
     } catch (error) {
       setTodoError(error instanceof Error ? error.message : '待办更新失败')
     } finally {
       setTodoSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (!editingTodoId) return
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null
+      const targetElement = event.target as HTMLElement | null
+      const editContainer = document.querySelector(
+        `[data-todo-edit-container="${editingTodoId}"]`,
+      ) as HTMLElement | null
+      if (editContainer && target && editContainer.contains(target)) {
+        const clickedInteractive = targetElement?.closest(
+          'input, textarea, select, button, .todo-time-input-shell',
+        )
+        if (clickedInteractive) return
+      }
+      const currentItem = todoItems.find((item) => item.id === editingTodoId)
+      if (!currentItem) return
+      window.setTimeout(() => {
+        const textInput = document.querySelector(
+          `input[data-todo-edit-text-for="${editingTodoId}"]`,
+        ) as HTMLInputElement | null
+        const timeInput = document.querySelector(
+          `input[data-todo-edit-time-for="${editingTodoId}"]`,
+        ) as HTMLInputElement | null
+        void saveEditTodo(currentItem, {
+          text: textInput?.value ?? editingTodoText,
+          time: timeInput?.value ?? editingTodoTime,
+        })
+      }, 0)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [editingTodoId, editingTodoText, editingTodoTime, todoItems])
 
   async function removeTodo(item: TodoItem) {
     setTodoSaving(true)
@@ -275,6 +359,7 @@ export function HomePage() {
       if (editingTodoId === item.id) {
         setEditingTodoId(null)
         setEditingTodoText('')
+        setEditingTodoTime('')
       }
     } catch (error) {
       setTodoError(error instanceof Error ? error.message : '待办删除失败')
@@ -311,11 +396,17 @@ export function HomePage() {
                 }
               }}
             />
+            <input
+              className="todo-input todo-time-input"
+              type="datetime-local"
+              value={newTodoTime}
+              disabled={todoSaving}
+              onChange={(event) => setNewTodoTime(event.target.value)}
+            />
             <button type="button" disabled={todoSaving || !newTodoText.trim()} onClick={() => void createTodo()}>
               添加
             </button>
           </div>
-
           {todoLoading ? <p className="muted">待办加载中...</p> : null}
           {!todoLoading && !todoItems.length ? <p className="muted">暂无待办，先加一条吧。</p> : null}
           {todoError ? <p className="weather-error">待办操作失败：{todoError}</p> : null}
@@ -332,26 +423,54 @@ export function HomePage() {
                       onChange={() => void toggleTodo(item)}
                     />
                     {editingTodoId === item.id ? (
-                      <input
-                        className="todo-input todo-edit-input"
-                        autoFocus
-                        value={editingTodoText}
-                        disabled={todoSaving}
-                        onChange={(event) => setEditingTodoText(event.target.value)}
-                        onBlur={() => void saveEditTodo(item)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            void saveEditTodo(item)
-                          }
-                          if (event.key === 'Escape') {
-                            setEditingTodoId(null)
-                            setEditingTodoText('')
-                          }
-                        }}
-                      />
+                      <div className="todo-edit-fields" data-todo-edit-container={item.id}>
+                        <input
+                          className="todo-input todo-edit-input"
+                          autoFocus
+                          data-todo-edit-text-for={item.id}
+                          value={editingTodoText}
+                          disabled={todoSaving}
+                          onChange={(event) => setEditingTodoText(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              void saveEditTodo(item)
+                            }
+                            if (event.key === 'Escape') {
+                              setEditingTodoId(null)
+                              setEditingTodoText('')
+                              setEditingTodoTime('')
+                            }
+                          }}
+                        />
+                        <div
+                          className="todo-time-input-shell"
+                          onClick={() => {
+                            const input = document.querySelector(
+                              `input[data-todo-edit-time-for="${item.id}"]`,
+                            ) as HTMLInputElement | null
+                            if (!input || input.disabled) return
+                            input.focus()
+                            if (typeof input.showPicker === 'function') {
+                              input.showPicker()
+                            }
+                          }}
+                        >
+                          <input
+                            className="todo-input todo-time-input todo-edit-time-input"
+                            type="datetime-local"
+                            data-todo-edit-time-for={item.id}
+                            value={editingTodoTime}
+                            disabled={todoSaving}
+                            onChange={(event) => setEditingTodoTime(event.target.value)}
+                          />
+                        </div>
+                      </div>
                     ) : (
-                      <span className={item.done ? 'task-done' : ''}>{item.text}</span>
+                      <span className={item.done ? 'task-done' : ''}>
+                        {item.text}
+                        <small className="todo-time-label">{formatTodoTime(item.time || item.createdAt)}</small>
+                      </span>
                     )}
                   </label>
                   <div className="todo-actions">

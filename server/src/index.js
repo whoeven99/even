@@ -13,7 +13,7 @@ const {
   deleteBillStage,
 } = require('./billAiParse')
 const { getAssets, updateAssets } = require('./assetStore')
-const { getTodos, createTodo, updateTodo, deleteTodo } = require('./todoStore')
+const { getTodos, createTodo, updateTodo, deleteTodo, reorderTodos } = require('./todoStore')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -237,8 +237,9 @@ api.get('/todos', async (_req, res) => {
 
 api.post('/todos', async (req, res) => {
   const text = req.body?.text
+  const time = req.body?.time
   try {
-    const data = await createTodo(text)
+    const data = await createTodo(text, time)
     res.json({ ok: true, ...data })
   } catch (error) {
     res.status(400).json({
@@ -250,6 +251,19 @@ api.post('/todos', async (req, res) => {
 
 api.put('/todos/:todoId', async (req, res) => {
   const todoId = req.params?.todoId
+  if (todoId === 'reorder') {
+    const orderedIds = req.body?.orderedIds
+    try {
+      const data = await reorderTodos(orderedIds)
+      res.json({ ok: true, ...data })
+    } catch (error) {
+      res.status(400).json({
+        ok: false,
+        message: error instanceof Error ? error.message : '待办排序失败',
+      })
+    }
+    return
+  }
   const body = req.body && typeof req.body === 'object' ? req.body : {}
   const patch = {}
   if (Object.prototype.hasOwnProperty.call(body, 'text')) {
@@ -257,6 +271,9 @@ api.put('/todos/:todoId', async (req, res) => {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'done')) {
     patch.done = body.done
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'time')) {
+    patch.time = body.time
   }
   try {
     const data = await updateTodo(todoId, patch)
