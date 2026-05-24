@@ -1,3 +1,21 @@
+// In-memory weather cache — avoids hitting Open-Meteo rate limits on repeated loads
+const _weatherCache = new Map()
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+function _getCached(key) {
+  const entry = _weatherCache.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) {
+    _weatherCache.delete(key)
+    return null
+  }
+  return entry.data
+}
+
+function _setCache(key, data) {
+  _weatherCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS })
+}
+
 const CITY_ALIASES = {
   北京市: '北京',
   帝都: '北京',
@@ -227,28 +245,42 @@ async function queryRecentWeatherDays(cityOrOptions, days = 3) {
   ) {
     const { lat, lon } = cityOrOptions
     const cityName = String(cityOrOptions.city || WEATHER_DEFAULT_CITY)
+    // Round coords to 1 decimal to group nearby requests under the same cache key
+    const cacheKey = `coords:${(Math.round(Number(lat) * 10) / 10).toFixed(1)},${(Math.round(Number(lon) * 10) / 10).toFixed(1)},${safeDays}`
+    const cached = _getCached(cacheKey)
+    if (cached) return cached
+
     const forecastData = await fetchWeatherByCoords(Number(lat), Number(lon), safeDays)
     const forecast = parseForecastData(forecastData.daily, safeDays)
-    return {
+    const result = {
       city: cityName,
       days: safeDays,
       forecast,
       availableDays: forecast.length,
       source: 'open-meteo',
     }
+    _setCache(cacheKey, result)
+    return result
   }
 
   // City name path — geocode first
   const city = typeof cityOrOptions === 'string' ? cityOrOptions : String(cityOrOptions || WEATHER_DEFAULT_CITY)
-  const { forecastData, resolved } = await fetchWeatherByCity(city, safeDays)
+  const resolved = resolveCityQuery(city)
+  const cacheKey = `city:${resolved.queryCity},${safeDays}`
+  const cached = _getCached(cacheKey)
+  if (cached) return cached
+
+  const { forecastData } = await fetchWeatherByCity(city, safeDays)
   const forecast = parseForecastData(forecastData.daily, safeDays)
-  return {
+  const result = {
     city: resolved.displayCity,
     days: safeDays,
     forecast,
     availableDays: forecast.length,
     source: 'open-meteo',
   }
+  _setCache(cacheKey, result)
+  return result
 }
 
 // For AI chat tool: current conditions

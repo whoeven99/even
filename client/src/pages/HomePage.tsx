@@ -434,7 +434,7 @@ export function HomePage() {
     return (
       <div
         key={item.id}
-        className={['sticky-note', `sticky-note-${colorIndex}`, item.done ? 'is-done' : '', isEditing ? 'is-editing' : ''].filter(Boolean).join(' ')}
+        className={['sticky-note', `sticky-note-${colorIndex}`, item.done ? 'is-done' : '', isEditing ? 'is-editing' : '', item.pinned && !isInHiddenSection ? 'is-pinned' : ''].filter(Boolean).join(' ')}
       >
         {item.pinned && !isInHiddenSection && (
           <span className="sticky-pin-badge" title="已置顶">📌</span>

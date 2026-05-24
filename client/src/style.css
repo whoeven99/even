@@ -874,6 +874,29 @@ button:focus-visible {
   opacity: 0.58;
 }
 
+.sticky-note.is-pinned {
+  width: 198px;
+  min-height: 174px;
+  border: 2px solid rgba(234, 179, 8, 0.55);
+  box-shadow:
+    0 0 0 3px rgba(234, 179, 8, 0.12),
+    3px 5px 16px rgba(15, 23, 42, 0.14),
+    0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.sticky-note.is-pinned:hover {
+  transform: translateY(-4px) rotate(-0.3deg);
+  box-shadow:
+    0 0 0 3px rgba(234, 179, 8, 0.18),
+    6px 10px 26px rgba(15, 23, 42, 0.16),
+    0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.home-board-notes .sticky-note.is-pinned {
+  width: 198px;
+  min-height: 174px;
+}
+
 .sticky-note.is-editing {
   min-height: 200px;
 }
