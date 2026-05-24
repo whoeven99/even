@@ -29,10 +29,17 @@ function formatAmount(value: number) {
   })
 }
 
+const TONE_LABELS: Record<AccountItem['tone'], string> = {
+  blue: '蓝',
+  red: '红',
+  gold: '金',
+  purple: '紫',
+}
+
+const PRESET_ICONS = ['◎', '★', '🏠', '🚗', '💳', '💼', '📈', '🏦']
+
 export function AssetManagerPage() {
   const [groups, setGroups] = useState<AccountGroup[]>([])
-  const [isDeleteEditMode, setIsDeleteEditMode] = useState(false)
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({})
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
   const [addError, setAddError] = useState('')
@@ -40,8 +47,21 @@ export function AssetManagerPage() {
   const [saveError, setSaveError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+
+  const [editingAmountId, setEditingAmountId] = useState<string | null>(null)
   const [editingAmount, setEditingAmount] = useState('')
+
+  const [editingFullItemId, setEditingFullItemId] = useState<string | null>(null)
+  const [editItemDraft, setEditItemDraft] = useState<{
+    name: string
+    note: string
+    amount: string
+    icon: string
+    tone: AccountItem['tone']
+  } | null>(null)
+
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
   const [addDraft, setAddDraft] = useState({
     groupId: '',
     groupTitle: '',
@@ -65,50 +85,40 @@ export function AssetManagerPage() {
   )
 
   const totals = useMemo(() => {
-    const allAmounts = groups.flatMap((group) => group.items.map((item) => item.amount))
-    const totalAsset = allAmounts.filter((amount) => amount > 0).reduce((sum, amount) => sum + amount, 0)
-    const totalDebt = Math.abs(
-      allAmounts.filter((amount) => amount < 0).reduce((sum, amount) => sum + amount, 0),
-    )
+    const allAmounts = groups.flatMap((g) => g.items.map((i) => i.amount))
+    const totalAsset = allAmounts.filter((a) => a > 0).reduce((s, a) => s + a, 0)
+    const totalDebt = Math.abs(allAmounts.filter((a) => a < 0).reduce((s, a) => s + a, 0))
+    const gross = totalAsset + totalDebt
     return {
       netAsset: totalAsset - totalDebt,
       totalAsset,
       totalDebt,
+      assetRatio: gross > 0 ? (totalAsset / gross) * 100 : 100,
     }
   }, [groups])
 
-  const filteredGroups = groupSummaries
-
   const splitColumns = useMemo(() => {
-    const assetGroups = filteredGroups
+    const assetGroups = groupSummaries
       .map((group) => {
         const items = group.items.filter((item) => item.amount >= 0)
-        return {
-          ...group,
-          items,
-          total: items.reduce((sum, item) => sum + item.amount, 0),
-        }
+        return { ...group, items, total: items.reduce((s, i) => s + i.amount, 0) }
       })
       .filter((group) => group.items.length > 0)
 
-    const debtGroups = filteredGroups
+    const debtGroups = groupSummaries
       .map((group) => {
         const items = group.items.filter((item) => item.amount < 0)
-        return {
-          ...group,
-          items,
-          total: items.reduce((sum, item) => sum + item.amount, 0),
-        }
+        return { ...group, items, total: items.reduce((s, i) => s + i.amount, 0) }
       })
       .filter((group) => group.items.length > 0)
 
     return {
       assetGroups,
       debtGroups,
-      assetCount: assetGroups.reduce((sum, group) => sum + group.items.length, 0),
-      debtCount: debtGroups.reduce((sum, group) => sum + group.items.length, 0),
+      assetCount: assetGroups.reduce((s, g) => s + g.items.length, 0),
+      debtCount: debtGroups.reduce((s, g) => s + g.items.length, 0),
     }
-  }, [filteredGroups])
+  }, [groupSummaries])
 
   async function loadAssets() {
     setIsLoading(true)
@@ -117,11 +127,9 @@ export function AssetManagerPage() {
       const data = await requestWithFetch<AssetsResponse>('/api/assets')
       const loadedGroups = Array.isArray(data.groups) ? data.groups : []
       setGroups(loadedGroups)
-      setIsDeleteEditMode(false)
-      setSelectedItemIds([])
       setAddDraft((prev) => ({
         ...prev,
-        groupId: loadedGroups[0]?.id || '',
+        groupId: loadedGroups.length > 0 ? loadedGroups[0].id : '__new__',
       }))
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : '加载失败')
@@ -154,57 +162,85 @@ export function AssetManagerPage() {
     setCollapsedMap((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  function updateItemAmount(itemId: string, amount: number) {
-    const nextGroups = groups.map((group) => ({
-      ...group,
-      items: group.items.map((item) => (item.id === itemId ? { ...item, amount } : item)),
-    }))
-    setGroups(nextGroups)
-    void persistGroups(nextGroups)
+  function startAmountEdit(item: AccountItem) {
+    setEditingAmountId(item.id)
+    setEditingAmount(String(item.amount))
+    setEditingFullItemId(null)
+    setEditItemDraft(null)
+    setDeleteConfirmId(null)
   }
 
-  function toggleItemSelection(itemId: string) {
-    setSelectedItemIds((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
-    )
-  }
-
-  function toggleDeleteEditMode() {
-    if (isDeleteEditMode) {
-      setIsDeleteEditMode(false)
-      setSelectedItemIds([])
+  function saveAmountEdit(itemId: string) {
+    const parsed = Number(editingAmount.trim())
+    if (Number.isNaN(parsed)) {
+      setEditingAmountId(null)
+      setEditingAmount('')
       return
     }
-    setIsDeleteEditMode(true)
-  }
-
-  function deleteSelectedItems() {
-    if (!selectedItemIds.length) return
-    const selectedSet = new Set(selectedItemIds)
-    const nextGroups = groups.map((group) => ({
-      ...group,
-      items: group.items.filter((item) => !selectedSet.has(item.id)),
+    const nextGroups = groups.map((g) => ({
+      ...g,
+      items: g.items.map((i) => (i.id === itemId ? { ...i, amount: parsed } : i)),
     }))
     setGroups(nextGroups)
-    setIsDeleteEditMode(false)
-    setSelectedItemIds([])
+    setEditingAmountId(null)
+    setEditingAmount('')
     void persistGroups(nextGroups)
   }
 
-  function ensureSelectedGroup() {
-    if (groupSummaries.length && !addDraft.groupId) {
-      setAddDraft((prev) => ({ ...prev, groupId: groupSummaries[0].id }))
-    }
+  function startFullEdit(item: AccountItem) {
+    setEditingFullItemId(item.id)
+    setEditItemDraft({
+      name: item.name,
+      note: item.note || '',
+      amount: String(item.amount),
+      icon: item.icon,
+      tone: item.tone,
+    })
+    setEditingAmountId(null)
+    setEditingAmount('')
+    setDeleteConfirmId(null)
   }
 
-  useEffect(() => {
-    ensureSelectedGroup()
-  }, [groupSummaries.length, addDraft.groupId])
+  function saveFullEdit(itemId: string) {
+    if (!editItemDraft) return
+    const name = editItemDraft.name.trim()
+    if (!name) return
+    const amount = Number(editItemDraft.amount.trim())
+    if (Number.isNaN(amount)) return
+    const nextGroups = groups.map((g) => ({
+      ...g,
+      items: g.items.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              name,
+              note: editItemDraft.note.trim() || undefined,
+              amount,
+              icon: editItemDraft.icon.trim() || '◎',
+              tone: editItemDraft.tone,
+            }
+          : i,
+      ),
+    }))
+    setGroups(nextGroups)
+    setEditingFullItemId(null)
+    setEditItemDraft(null)
+    void persistGroups(nextGroups)
+  }
 
-  function createGroupIdFromTitle(title: string) {
-    const compact = title.trim().toLowerCase().replace(/\s+/g, '-')
-    const safe = compact.replace(/[^a-z0-9-\u4e00-\u9fa5]/g, '')
-    return safe || `group-${Date.now()}`
+  function cancelFullEdit() {
+    setEditingFullItemId(null)
+    setEditItemDraft(null)
+  }
+
+  function deleteItem(itemId: string) {
+    const nextGroups = groups.map((g) => ({
+      ...g,
+      items: g.items.filter((i) => i.id !== itemId),
+    }))
+    setGroups(nextGroups)
+    setDeleteConfirmId(null)
+    void persistGroups(nextGroups)
   }
 
   function addAsset() {
@@ -213,13 +249,10 @@ export function AssetManagerPage() {
     if (!name) return setAddError('资产名称必填')
     if (Number.isNaN(amount)) return setAddError('金额格式不正确')
 
-    let targetGroupId = addDraft.groupId
-    const hasGroup = groupSummaries.some((group) => group.id === targetGroupId)
-    const shouldCreateGroup = !hasGroup
+    const isNew =
+      addDraft.groupId === '__new__' || !groupSummaries.some((g) => g.id === addDraft.groupId)
     const newGroupTitle = addDraft.groupTitle.trim()
-    if (shouldCreateGroup && !newGroupTitle) {
-      return setAddError('当前没有分组，请先填写分组名称')
-    }
+    if (isNew && !newGroupTitle) return setAddError('请填写新分组名称')
 
     const newAsset: AccountItem = {
       id: `asset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -230,23 +263,23 @@ export function AssetManagerPage() {
       tone: addDraft.tone,
     }
 
-    let nextGroups: AccountGroup[] = []
-    if (shouldCreateGroup) {
-      const newGroupId = createGroupIdFromTitle(newGroupTitle)
+    let targetGroupId = addDraft.groupId
+    let nextGroups: AccountGroup[]
+
+    if (isNew) {
+      const newGroupId =
+        newGroupTitle
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9\-\u4e00-\u9fa5]/g, '') || `group-${Date.now()}`
       targetGroupId = newGroupId
-      nextGroups = [
-        ...groups,
-        {
-          id: newGroupId,
-          title: newGroupTitle,
-          items: [newAsset],
-        },
-      ]
+      nextGroups = [...groups, { id: newGroupId, title: newGroupTitle, items: [newAsset] }]
     } else {
-      nextGroups = groups.map((group) =>
-        group.id === targetGroupId ? { ...group, items: [...group.items, newAsset] } : group,
+      nextGroups = groups.map((g) =>
+        g.id === targetGroupId ? { ...g, items: [...g.items, newAsset] } : g,
       )
     }
+
     setGroups(nextGroups)
     setAddError('')
     setIsAddFormOpen(false)
@@ -261,20 +294,194 @@ export function AssetManagerPage() {
     void persistGroups(nextGroups)
   }
 
-  function startAmountEdit(item: AccountItem) {
-    setEditingItemId(item.id)
-    setEditingAmount(String(item.amount))
+  function renderItem(item: AccountItem) {
+    const isEditingFull = editingFullItemId === item.id
+    const isEditingAmt = editingAmountId === item.id
+    const isDeleteConfirm = deleteConfirmId === item.id
+
+    if (isEditingFull && editItemDraft) {
+      return (
+        <li key={item.id} className="am-item am-item-edit">
+          <span className={`am-item-icon am-item-icon-${editItemDraft.tone}`}>
+            {editItemDraft.icon || '◎'}
+          </span>
+          <div className="am-item-edit-form">
+            <div className="am-item-edit-top">
+              <input
+                className="am-icon-input"
+                value={editItemDraft.icon}
+                placeholder="◎"
+                title="图标字符"
+                onChange={(e) => setEditItemDraft((p) => (p ? { ...p, icon: e.target.value } : p))}
+              />
+              <div className="am-tone-picker am-tone-picker-sm">
+                {(['blue', 'red', 'gold', 'purple'] as const).map((tone) => (
+                  <button
+                    key={tone}
+                    type="button"
+                    className={`am-tone-btn am-tone-btn-${tone}${editItemDraft.tone === tone ? ' selected' : ''}`}
+                    onClick={() => setEditItemDraft((p) => (p ? { ...p, tone } : p))}
+                    title={TONE_LABELS[tone]}
+                  />
+                ))}
+              </div>
+            </div>
+            <input
+              className="am-field-input"
+              autoFocus
+              placeholder="名称"
+              value={editItemDraft.name}
+              onChange={(e) => setEditItemDraft((p) => (p ? { ...p, name: e.target.value } : p))}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancelFullEdit()
+              }}
+            />
+            <input
+              className="am-field-input"
+              placeholder="备注（可选）"
+              value={editItemDraft.note}
+              onChange={(e) => setEditItemDraft((p) => (p ? { ...p, note: e.target.value } : p))}
+            />
+            <input
+              className="am-field-input"
+              placeholder="金额（负债填负数）"
+              value={editItemDraft.amount}
+              onChange={(e) =>
+                setEditItemDraft((p) => (p ? { ...p, amount: e.target.value } : p))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  saveFullEdit(item.id)
+                }
+                if (e.key === 'Escape') cancelFullEdit()
+              }}
+            />
+            <div className="am-item-edit-btns">
+              <button
+                type="button"
+                className="am-save-btn"
+                disabled={isSaving}
+                onClick={() => saveFullEdit(item.id)}
+              >
+                保存
+              </button>
+              <button type="button" className="am-cancel-btn" onClick={cancelFullEdit}>
+                取消
+              </button>
+            </div>
+          </div>
+        </li>
+      )
+    }
+
+    return (
+      <li key={item.id} className={`am-item${isDeleteConfirm ? ' am-item-confirming' : ''}`}>
+        <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
+        <div className="am-item-text">
+          <p>{item.name}</p>
+          {item.note ? <small>{item.note}</small> : null}
+        </div>
+        {isDeleteConfirm ? (
+          <div className="am-delete-confirm">
+            <span>确认删除？</span>
+            <button
+              type="button"
+              className="am-del-yes"
+              disabled={isSaving}
+              onClick={() => deleteItem(item.id)}
+            >
+              删除
+            </button>
+            <button
+              type="button"
+              className="am-del-no"
+              onClick={() => setDeleteConfirmId(null)}
+            >
+              取消
+            </button>
+          </div>
+        ) : isEditingAmt ? (
+          <input
+            className="am-amount-input"
+            value={editingAmount}
+            autoFocus
+            onChange={(e) => setEditingAmount(e.target.value)}
+            onBlur={() => saveAmountEdit(item.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveAmountEdit(item.id)
+              }
+              if (e.key === 'Escape') {
+                setEditingAmountId(null)
+                setEditingAmount('')
+              }
+            }}
+          />
+        ) : (
+          <div className="am-item-right">
+            <div className="am-item-hover-actions">
+              <button
+                type="button"
+                className="am-item-action-btn"
+                title="编辑"
+                onClick={() => startFullEdit(item)}
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                className="am-item-action-btn am-item-action-btn-del"
+                title="删除"
+                onClick={() => setDeleteConfirmId(item.id)}
+              >
+                ✕
+              </button>
+            </div>
+            <button
+              type="button"
+              className={`am-amount-btn${item.amount < 0 ? ' am-item-amount-negative' : ''}`}
+              onClick={() => startAmountEdit(item)}
+              title="点击快速编辑金额"
+            >
+              {formatAmount(item.amount)}
+            </button>
+          </div>
+        )}
+      </li>
+    )
   }
 
-  function saveAmountEdit(itemId: string) {
-    const parsed = Number(editingAmount.trim())
-    if (Number.isNaN(parsed)) return
-    updateItemAmount(itemId, parsed)
-    setEditingItemId(null)
-    setEditingAmount('')
+  function renderGroupSection(
+    group: { id: string; title: string; count: number; items: AccountItem[]; total: number },
+    keyPrefix: string,
+  ) {
+    return (
+      <section key={`${keyPrefix}-${group.id}`} className="am-group">
+        <header className="am-group-header">
+          <button
+            type="button"
+            className="am-group-title"
+            onClick={() => toggleGroup(group.id)}
+          >
+            <span className="am-group-chevron">
+              {collapsedMap[group.id] ? '▶' : '▼'}
+            </span>
+            <span className="am-group-name">{group.title}</span>
+            <small className="am-group-count">{group.items.length}</small>
+          </button>
+          <span className="am-group-total">{formatAmount(group.total)}</span>
+        </header>
+        {!collapsedMap[group.id] && (
+          <ul className="am-items">{group.items.map((item) => renderItem(item))}</ul>
+        )}
+      </section>
+    )
   }
 
-  const shouldShowToolsPanel = isAddFormOpen || isLoading || isSaving || Boolean(loadError) || Boolean(saveError)
+  const isCreatingNewGroup =
+    addDraft.groupId === '__new__' || groupSummaries.length === 0
 
   return (
     <section className="page-shell am-page">
@@ -283,130 +490,201 @@ export function AssetManagerPage() {
         <div className="am-header-actions">
           <button
             type="button"
-            className="am-icon-btn"
-            aria-label="添加资产"
+            className={`am-icon-btn${isAddFormOpen ? ' am-icon-btn-active' : ''}`}
+            disabled={isSaving}
             onClick={() => {
               setIsAddFormOpen((prev) => !prev)
               setAddError('')
             }}
           >
-            添加资产
-          </button>
-          <button type="button" className="am-icon-btn" aria-label="刷新资产" onClick={() => void loadAssets()}>
-            刷新
+            {isAddFormOpen ? '收起' : '＋ 添加'}
           </button>
           <button
             type="button"
             className="am-icon-btn"
-            aria-label={isDeleteEditMode ? '取消删除编辑' : '删除编辑'}
-            onClick={toggleDeleteEditMode}
-            disabled={isSaving}
+            disabled={isSaving || isLoading}
+            onClick={() => void loadAssets()}
           >
-            {isDeleteEditMode ? '取消' : '编辑'}
+            {isLoading ? '加载中…' : '刷新'}
           </button>
-          {isDeleteEditMode ? (
-            <button
-              type="button"
-              className="am-icon-btn am-icon-btn-danger"
-              aria-label="删除已选资产"
-              onClick={deleteSelectedItems}
-              disabled={!selectedItemIds.length || isSaving}
-            >
-              删除已选{selectedItemIds.length ? ` (${selectedItemIds.length})` : ''}
-            </button>
-          ) : null}
         </div>
       </header>
 
       <article className="am-summary-card">
-        <p className="am-summary-label">净资产</p>
-        <p className="am-summary-main">{formatAmount(totals.netAsset)}</p>
-        <div className="am-summary-sub">
-          <span>资产 {formatAmount(totals.totalAsset)}</span>
-          <span>负债 {formatAmount(totals.totalDebt)}</span>
+        <div className="am-summary-body">
+          <div className="am-summary-main-block">
+            <p className="am-summary-label">净资产</p>
+            <p className={`am-summary-main${totals.netAsset < 0 ? ' am-summary-main-neg' : ''}`}>
+              ¥ {formatAmount(Math.abs(totals.netAsset))}
+            </p>
+          </div>
+          <div className="am-summary-stats">
+            <div className="am-summary-stat">
+              <span className="am-summary-stat-label">总资产</span>
+              <span className="am-summary-stat-value am-stat-asset">
+                ¥ {formatAmount(totals.totalAsset)}
+              </span>
+            </div>
+            <div className="am-summary-stat">
+              <span className="am-summary-stat-label">总负债</span>
+              <span className="am-summary-stat-value am-stat-debt">
+                ¥ {formatAmount(totals.totalDebt)}
+              </span>
+            </div>
+          </div>
         </div>
+        {totals.totalAsset + totals.totalDebt > 0 && (
+          <div className="am-summary-bar-track">
+            <div
+              className="am-summary-bar-fill"
+              style={{ width: `${totals.assetRatio}%` }}
+            />
+          </div>
+        )}
       </article>
 
-      {shouldShowToolsPanel ? (
-        <section className="am-tools">
-          {isAddFormOpen ? (
-            <div className="am-add-form">
+      {(loadError || saveError) && (
+        <p className="am-error am-page-error">
+          {loadError ? `加载失败：${loadError}` : `保存失败：${saveError}`}
+        </p>
+      )}
+      {isSaving && <p className="am-tools-tip">保存中…</p>}
+
+      {isAddFormOpen && (
+        <section className="am-add-panel">
+          <h4 className="am-add-panel-title">添加资产</h4>
+          <div className="am-add-form-grid">
+            <div className="am-form-group">
+              <label className="am-form-label">分组</label>
               <select
                 className="am-select"
-                value={addDraft.groupId}
-                onChange={(event) => setAddDraft((prev) => ({ ...prev, groupId: event.target.value }))}
+                value={isCreatingNewGroup && groupSummaries.length > 0 ? '__new__' : addDraft.groupId}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setAddDraft((prev) => ({
+                    ...prev,
+                    groupId: val,
+                    groupTitle: val === '__new__' ? prev.groupTitle : '',
+                  }))
+                }}
               >
-                {groupSummaries.length ? (
-                  groupSummaries.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.title}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">无分组（将创建新分组）</option>
-                )}
+                {groupSummaries.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.title}
+                  </option>
+                ))}
+                <option value="__new__">＋ 新建分组</option>
               </select>
-              {!groupSummaries.length ? (
+            </div>
+            {isCreatingNewGroup && (
+              <div className="am-form-group">
+                <label className="am-form-label">分组名称 *</label>
                 <input
                   className="am-search-input"
-                  placeholder="新分组名称"
+                  placeholder="请输入新分组名称"
                   value={addDraft.groupTitle}
-                  onChange={(event) =>
-                    setAddDraft((prev) => ({ ...prev, groupTitle: event.target.value, groupId: '' }))
+                  onChange={(e) =>
+                    setAddDraft((prev) => ({ ...prev, groupTitle: e.target.value }))
                   }
                 />
-              ) : null}
+              </div>
+            )}
+            <div className="am-form-group">
+              <label className="am-form-label">名称 *</label>
               <input
                 className="am-search-input"
                 placeholder="资产名称"
                 value={addDraft.name}
-                onChange={(event) => setAddDraft((prev) => ({ ...prev, name: event.target.value }))}
+                onChange={(e) => setAddDraft((prev) => ({ ...prev, name: e.target.value }))}
               />
+            </div>
+            <div className="am-form-group">
+              <label className="am-form-label">备注</label>
               <input
                 className="am-search-input"
-                placeholder="备注（可选）"
+                placeholder="可选"
                 value={addDraft.note}
-                onChange={(event) => setAddDraft((prev) => ({ ...prev, note: event.target.value }))}
+                onChange={(e) => setAddDraft((prev) => ({ ...prev, note: e.target.value }))}
               />
+            </div>
+            <div className="am-form-group">
+              <label className="am-form-label">金额 *</label>
               <input
                 className="am-search-input"
-                placeholder="金额（负债填负数）"
+                placeholder="负债填负数，如 -50000"
                 value={addDraft.amount}
-                onChange={(event) => setAddDraft((prev) => ({ ...prev, amount: event.target.value }))}
+                onChange={(e) => setAddDraft((prev) => ({ ...prev, amount: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addAsset()
+                  }
+                }}
               />
-              <input
-                className="am-search-input"
-                placeholder="图标字符（可选）"
-                value={addDraft.icon}
-                onChange={(event) => setAddDraft((prev) => ({ ...prev, icon: event.target.value }))}
-              />
-              <select
-                className="am-select"
-                value={addDraft.tone}
-                onChange={(event) =>
-                  setAddDraft((prev) => ({
-                    ...prev,
-                    tone: event.target.value as AccountItem['tone'],
-                  }))
-                }
+            </div>
+            <div className="am-form-group">
+              <label className="am-form-label">图标</label>
+              <div className="am-icon-picker-row">
+                {PRESET_ICONS.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    className={`am-icon-preset-btn${addDraft.icon === icon ? ' selected' : ''}`}
+                    onClick={() => setAddDraft((prev) => ({ ...prev, icon }))}
+                  >
+                    {icon}
+                  </button>
+                ))}
+                <input
+                  className="am-icon-input"
+                  placeholder="自定义"
+                  value={addDraft.icon}
+                  onChange={(e) => setAddDraft((prev) => ({ ...prev, icon: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="am-form-group">
+              <label className="am-form-label">颜色</label>
+              <div className="am-tone-picker">
+                {(['blue', 'red', 'gold', 'purple'] as const).map((tone) => (
+                  <button
+                    key={tone}
+                    type="button"
+                    className={`am-tone-btn am-tone-btn-${tone}${addDraft.tone === tone ? ' selected' : ''}`}
+                    onClick={() => setAddDraft((prev) => ({ ...prev, tone }))}
+                    title={TONE_LABELS[tone]}
+                  >
+                    {TONE_LABELS[tone]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="am-add-actions">
+            {addError && <p className="am-error">{addError}</p>}
+            <div className="am-add-btns">
+              <button
+                type="button"
+                className="am-cancel-btn"
+                onClick={() => {
+                  setIsAddFormOpen(false)
+                  setAddError('')
+                }}
               >
-                <option value="blue">蓝色</option>
-                <option value="red">红色</option>
-                <option value="gold">金色</option>
-                <option value="purple">紫色</option>
-              </select>
-              <button type="button" className="am-add-submit" onClick={addAsset}>
+                取消
+              </button>
+              <button
+                type="button"
+                className="am-add-submit"
+                disabled={isSaving}
+                onClick={addAsset}
+              >
                 确认添加
               </button>
-              {addError ? <p className="am-error">{addError}</p> : null}
             </div>
-          ) : null}
-          {isLoading ? <p className="am-tools-tip">资产加载中...</p> : null}
-          {isSaving ? <p className="am-tools-tip">保存中...</p> : null}
-          {loadError ? <p className="am-error">资产加载失败：{loadError}</p> : null}
-          {saveError ? <p className="am-error">资产保存失败：{saveError}</p> : null}
+          </div>
         </section>
-      ) : null}
+      )}
 
       <div className="am-columns">
         <section className="am-column">
@@ -416,70 +694,9 @@ export function AssetManagerPage() {
           </header>
           <div className="am-list">
             {splitColumns.assetGroups.length ? (
-              splitColumns.assetGroups.map((group) => (
-                <section key={`asset-${group.id}`} className="am-group">
-                  <header className="am-group-header">
-                    <button type="button" className="am-group-title" onClick={() => toggleGroup(group.id)}>
-                      <h3>{group.title}</h3>
-                      <small>{collapsedMap[group.id] ? '展开' : '收起'}</small>
-                    </button>
-                    <span>{formatAmount(group.total)}</span>
-                  </header>
-
-                  {!collapsedMap[group.id] ? (
-                    <ul className="am-items">
-                      {group.items.map((item) => (
-                        <li key={item.id} className={`am-item ${isDeleteEditMode ? 'am-item-selectable' : ''}`}>
-                          {isDeleteEditMode ? (
-                            <label className="am-item-check" aria-label={`选择${item.name}`}>
-                              <input
-                                type="checkbox"
-                                checked={selectedItemIds.includes(item.id)}
-                                onChange={() => toggleItemSelection(item.id)}
-                              />
-                            </label>
-                          ) : null}
-                          <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
-                          <div className="am-item-text">
-                            <p>{item.name}</p>
-                            {item.note ? <small>{item.note}</small> : null}
-                          </div>
-                          {editingItemId === item.id ? (
-                            <input
-                              className="am-amount-input"
-                              value={editingAmount}
-                              autoFocus
-                              onChange={(event) => setEditingAmount(event.target.value)}
-                              onBlur={() => saveAmountEdit(item.id)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                  event.preventDefault()
-                                  saveAmountEdit(item.id)
-                                }
-                                if (event.key === 'Escape') {
-                                  setEditingItemId(null)
-                                  setEditingAmount('')
-                                }
-                              }}
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              className={`am-amount-btn ${item.amount < 0 ? 'am-item-amount-negative' : ''}`}
-                              onClick={() => startAmountEdit(item)}
-                              title="点击编辑金额"
-                            >
-                              {formatAmount(item.amount)}
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </section>
-              ))
+              splitColumns.assetGroups.map((g) => renderGroupSection(g, 'asset'))
             ) : (
-              <p className="am-empty">当前筛选条件下暂无资产项。</p>
+              <p className="am-empty">暂无资产项。</p>
             )}
           </div>
         </section>
@@ -491,70 +708,9 @@ export function AssetManagerPage() {
           </header>
           <div className="am-list">
             {splitColumns.debtGroups.length ? (
-              splitColumns.debtGroups.map((group) => (
-                <section key={`debt-${group.id}`} className="am-group">
-                  <header className="am-group-header">
-                    <button type="button" className="am-group-title" onClick={() => toggleGroup(group.id)}>
-                      <h3>{group.title}</h3>
-                      <small>{collapsedMap[group.id] ? '展开' : '收起'}</small>
-                    </button>
-                    <span>{formatAmount(group.total)}</span>
-                  </header>
-
-                  {!collapsedMap[group.id] ? (
-                    <ul className="am-items">
-                      {group.items.map((item) => (
-                        <li key={item.id} className={`am-item ${isDeleteEditMode ? 'am-item-selectable' : ''}`}>
-                          {isDeleteEditMode ? (
-                            <label className="am-item-check" aria-label={`选择${item.name}`}>
-                              <input
-                                type="checkbox"
-                                checked={selectedItemIds.includes(item.id)}
-                                onChange={() => toggleItemSelection(item.id)}
-                              />
-                            </label>
-                          ) : null}
-                          <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
-                          <div className="am-item-text">
-                            <p>{item.name}</p>
-                            {item.note ? <small>{item.note}</small> : null}
-                          </div>
-                          {editingItemId === item.id ? (
-                            <input
-                              className="am-amount-input"
-                              value={editingAmount}
-                              autoFocus
-                              onChange={(event) => setEditingAmount(event.target.value)}
-                              onBlur={() => saveAmountEdit(item.id)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                  event.preventDefault()
-                                  saveAmountEdit(item.id)
-                                }
-                                if (event.key === 'Escape') {
-                                  setEditingItemId(null)
-                                  setEditingAmount('')
-                                }
-                              }}
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              className={`am-amount-btn ${item.amount < 0 ? 'am-item-amount-negative' : ''}`}
-                              onClick={() => startAmountEdit(item)}
-                              title="点击编辑金额"
-                            >
-                              {formatAmount(item.amount)}
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </section>
-              ))
+              splitColumns.debtGroups.map((g) => renderGroupSection(g, 'debt'))
             ) : (
-              <p className="am-empty">当前筛选条件下暂无负债项。</p>
+              <p className="am-empty">暂无负债项。</p>
             )}
           </div>
         </section>

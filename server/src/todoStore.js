@@ -81,6 +81,8 @@ function sanitizeTodoItem(item) {
     id,
     text,
     done: Boolean(item?.done),
+    pinned: Boolean(item?.pinned),
+    hidden: Boolean(item?.hidden),
     createdAt: String(item?.createdAt || ''),
     updatedAt: String(item?.updatedAt || ''),
     time,
@@ -118,6 +120,7 @@ async function readTodoDoc() {
 function sortTodos(items) {
   return [...items]
     .sort((a, b) => {
+      if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
       const timeA = new Date(String(a.time || a.createdAt || a.updatedAt || '')).getTime()
       const timeB = new Date(String(b.time || b.createdAt || b.updatedAt || '')).getTime()
       const validA = Number.isFinite(timeA)
@@ -198,6 +201,14 @@ async function updateTodo(todoId, patch) {
       Object.prototype.hasOwnProperty.call(patch, 'time')
         ? normalizeTodoTime(patch.time, current.time || now)
         : current.time || now,
+    pinned:
+      Object.prototype.hasOwnProperty.call(patch, 'pinned')
+        ? Boolean(patch.pinned)
+        : Boolean(current.pinned),
+    hidden:
+      Object.prototype.hasOwnProperty.call(patch, 'hidden')
+        ? Boolean(patch.hidden)
+        : Boolean(current.hidden),
     updatedAt: now,
   }
 

@@ -29,6 +29,8 @@ type TodoItem = {
   id: string
   text: string
   done: boolean
+  pinned: boolean
+  hidden: boolean
   time: string
   createdAt: string
   updatedAt: string
@@ -77,6 +79,14 @@ function toDateStartLocalValue(dateText: string): string {
   const full = toDateTimeLocalValue(dateText)
   if (!full) return ''
   return `${full.slice(0, 10)}T00:00`
+}
+
+function getStickyColorIndex(id: string): number {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash) % 5
 }
 
 function buildTemperatureChart(forecast: WeatherDay[]) {
@@ -138,6 +148,7 @@ export function HomePage() {
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null)
   const [editingTodoText, setEditingTodoText] = useState('')
   const [editingTodoTime, setEditingTodoTime] = useState('')
+  const [showHidden, setShowHidden] = useState(false)
   const weatherChart = weatherData ? buildTemperatureChart(weatherData.forecast) : null
   const isMountedRef = useRef(true)
 
@@ -331,8 +342,8 @@ export function HomePage() {
       if (!currentItem) return
       window.setTimeout(() => {
         const textInput = document.querySelector(
-          `input[data-todo-edit-text-for="${editingTodoId}"]`,
-        ) as HTMLInputElement | null
+          `[data-todo-edit-text-for="${editingTodoId}"]`,
+        ) as HTMLTextAreaElement | null
         const timeInput = document.querySelector(
           `input[data-todo-edit-time-for="${editingTodoId}"]`,
         ) as HTMLInputElement | null
@@ -368,6 +379,149 @@ export function HomePage() {
     }
   }
 
+  async function togglePin(item: TodoItem) {
+    setTodoSaving(true)
+    setTodoError(null)
+    try {
+      const data = await requestWithFetch<TodoApiResponse>(`/api/todos/${encodeURIComponent(item.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ pinned: !item.pinned }),
+      })
+      setTodoItems(Array.isArray(data.items) ? data.items : [])
+    } catch (error) {
+      setTodoError(error instanceof Error ? error.message : '待办更新失败')
+    } finally {
+      setTodoSaving(false)
+    }
+  }
+
+  async function toggleHide(item: TodoItem) {
+    setTodoSaving(true)
+    setTodoError(null)
+    try {
+      const data = await requestWithFetch<TodoApiResponse>(`/api/todos/${encodeURIComponent(item.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ hidden: !item.hidden }),
+      })
+      setTodoItems(Array.isArray(data.items) ? data.items : [])
+    } catch (error) {
+      setTodoError(error instanceof Error ? error.message : '待办更新失败')
+    } finally {
+      setTodoSaving(false)
+    }
+  }
+
+  const pinnedTodos = todoItems.filter((i) => i.pinned && !i.hidden)
+  const regularTodos = todoItems.filter((i) => !i.pinned && !i.hidden)
+  const hiddenTodos = todoItems.filter((i) => i.hidden)
+
+  function renderStickyNote(item: TodoItem, isInHiddenSection = false) {
+    const colorIndex = getStickyColorIndex(item.id)
+    const isEditing = editingTodoId === item.id
+    return (
+      <div
+        key={item.id}
+        className={['sticky-note', `sticky-note-${colorIndex}`, item.done ? 'is-done' : '', isEditing ? 'is-editing' : ''].filter(Boolean).join(' ')}
+      >
+        {item.pinned && !isInHiddenSection && (
+          <span className="sticky-pin-badge" title="已置顶">📌</span>
+        )}
+        {isEditing ? (
+          <div className="sticky-note-edit-mode" data-todo-edit-container={item.id}>
+            <textarea
+              className="sticky-note-textarea"
+              autoFocus
+              data-todo-edit-text-for={item.id}
+              value={editingTodoText}
+              disabled={todoSaving}
+              onChange={(e) => setEditingTodoText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setEditingTodoId(null)
+                  setEditingTodoText('')
+                  setEditingTodoTime('')
+                }
+              }}
+            />
+            <div
+              className="todo-time-input-shell"
+              onClick={() => {
+                const input = document.querySelector(
+                  `input[data-todo-edit-time-for="${item.id}"]`,
+                ) as HTMLInputElement | null
+                if (!input || input.disabled) return
+                input.focus()
+                if (typeof input.showPicker === 'function') {
+                  input.showPicker()
+                }
+              }}
+            >
+              <input
+                className="todo-input todo-time-input todo-edit-time-input"
+                type="datetime-local"
+                data-todo-edit-time-for={item.id}
+                value={editingTodoTime}
+                disabled={todoSaving}
+                onChange={(e) => setEditingTodoTime(e.target.value)}
+              />
+            </div>
+            <div className="sticky-note-edit-btns">
+              <button type="button" disabled={todoSaving} onClick={() => void saveEditTodo(item)}>
+                保存
+              </button>
+              <button
+                type="button"
+                disabled={todoSaving}
+                onClick={() => {
+                  setEditingTodoId(null)
+                  setEditingTodoText('')
+                  setEditingTodoTime('')
+                }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className={`sticky-note-text${item.done ? ' done' : ''}`}>{item.text}</p>
+            <span className="sticky-note-time">{formatTodoTime(item.time || item.createdAt)}</span>
+            <div className="sticky-note-actions">
+              {!isInHiddenSection ? (
+                <>
+                  <button className="sticky-note-btn" type="button" disabled={todoSaving} onClick={() => void toggleTodo(item)}>
+                    {item.done ? '↩ 撤销' : '✓ 完成'}
+                  </button>
+                  <button className="sticky-note-btn" type="button" disabled={todoSaving} onClick={() => void togglePin(item)}>
+                    {item.pinned ? '取消置顶' : '📌 置顶'}
+                  </button>
+                  <button className="sticky-note-btn" type="button" disabled={todoSaving} onClick={() => void toggleHide(item)}>
+                    隐藏
+                  </button>
+                  <button className="sticky-note-btn" type="button" disabled={todoSaving} onClick={() => startEditTodo(item)}>
+                    编辑
+                  </button>
+                  <button className="sticky-note-btn sticky-note-btn-danger" type="button" disabled={todoSaving} onClick={() => void removeTodo(item)}>
+                    删除
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="sticky-note-btn" type="button" disabled={todoSaving} onClick={() => void toggleHide(item)}>
+                    恢复显示
+                  </button>
+                  <button className="sticky-note-btn sticky-note-btn-danger" type="button" disabled={todoSaving} onClick={() => void removeTodo(item)}>
+                    删除
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
     <section className="page-shell home-page-fit">
       <header className="page-hero">
@@ -377,9 +531,25 @@ export function HomePage() {
       <div className="home-layout">
         <div className="home-main">
         <article className="dash-card home-todo-card">
-          <div className="dash-card-header">
-            <h3>待办事项</h3>
-            <span className="muted">{todoLoading ? '加载中' : `${todoItems.length} 项`}</span>
+          <div className="todo-board-header">
+            <div className="todo-board-title">
+              <h3>待办事项</h3>
+              {!todoLoading && todoItems.filter((i) => !i.hidden).length > 0 && (
+                <span className="todo-board-count">
+                  {todoItems.filter((i) => !i.hidden && i.done).length} / {todoItems.filter((i) => !i.hidden).length} 完成
+                </span>
+              )}
+              {todoLoading && <span className="muted todo-board-loading">加载中…</span>}
+            </div>
+            {hiddenTodos.length > 0 && (
+              <button
+                type="button"
+                className="todo-hidden-toggle"
+                onClick={() => setShowHidden(!showHidden)}
+              >
+                {showHidden ? '收起已隐藏' : `${hiddenTodos.length} 个已隐藏`}
+              </button>
+            )}
           </div>
 
           <div className="todo-create-row">
@@ -407,86 +577,38 @@ export function HomePage() {
               添加
             </button>
           </div>
-          {todoLoading ? <p className="muted">待办加载中...</p> : null}
-          {!todoLoading && !todoItems.length ? <p className="muted">暂无待办，先加一条吧。</p> : null}
-          {todoError ? <p className="weather-error">待办操作失败：{todoError}</p> : null}
 
-          {todoItems.length ? (
-            <ul className="todo-list">
-              {todoItems.map((item) => (
-                <li key={item.id} className="todo-item">
-                  <label className="todo-item-main">
-                    <input
-                      type="checkbox"
-                      checked={item.done}
-                      disabled={todoSaving}
-                      onChange={() => void toggleTodo(item)}
-                    />
-                    {editingTodoId === item.id ? (
-                      <div className="todo-edit-fields" data-todo-edit-container={item.id}>
-                        <input
-                          className="todo-input todo-edit-input"
-                          autoFocus
-                          data-todo-edit-text-for={item.id}
-                          value={editingTodoText}
-                          disabled={todoSaving}
-                          onChange={(event) => setEditingTodoText(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              void saveEditTodo(item)
-                            }
-                            if (event.key === 'Escape') {
-                              setEditingTodoId(null)
-                              setEditingTodoText('')
-                              setEditingTodoTime('')
-                            }
-                          }}
-                        />
-                        <div
-                          className="todo-time-input-shell"
-                          onClick={() => {
-                            const input = document.querySelector(
-                              `input[data-todo-edit-time-for="${item.id}"]`,
-                            ) as HTMLInputElement | null
-                            if (!input || input.disabled) return
-                            input.focus()
-                            if (typeof input.showPicker === 'function') {
-                              input.showPicker()
-                            }
-                          }}
-                        >
-                          <input
-                            className="todo-input todo-time-input todo-edit-time-input"
-                            type="datetime-local"
-                            data-todo-edit-time-for={item.id}
-                            value={editingTodoTime}
-                            disabled={todoSaving}
-                            onChange={(event) => setEditingTodoTime(event.target.value)}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <span className={item.done ? 'task-done' : ''}>
-                        {item.text}
-                        <small className="todo-time-label">{formatTodoTime(item.time || item.createdAt)}</small>
-                      </span>
-                    )}
-                  </label>
-                  <div className="todo-actions">
-                    {editingTodoId !== item.id ? (
-                      <button type="button" disabled={todoSaving} onClick={() => startEditTodo(item)}>
-                        编辑
-                      </button>
-                    ) : null}
-                    <button type="button" disabled={todoSaving} onClick={() => void removeTodo(item)}>
-                      删除
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          {todoError ? <p className="weather-error">待办操作失败：{todoError}</p> : null}
+          {!todoLoading && todoItems.filter((i) => !i.hidden).length === 0 && (
+            <p className="muted">暂无待办，先加一条吧。</p>
+          )}
+
+          {pinnedTodos.length > 0 && (
+            <div className="sticky-section">
+              <div className="sticky-section-label">📌 置顶</div>
+              <div className="sticky-board">
+                {pinnedTodos.map((item) => renderStickyNote(item))}
+              </div>
+            </div>
+          )}
+
+          {regularTodos.length > 0 && (
+            <div className={pinnedTodos.length > 0 ? 'sticky-section' : ''}>
+              {pinnedTodos.length > 0 && <div className="sticky-section-label">其他待办</div>}
+              <div className="sticky-board">
+                {regularTodos.map((item) => renderStickyNote(item))}
+              </div>
+            </div>
+          )}
+
+          {showHidden && hiddenTodos.length > 0 && (
+            <div className="sticky-section sticky-section-dimmed">
+              <div className="sticky-section-label">已隐藏</div>
+              <div className="sticky-board">
+                {hiddenTodos.map((item) => renderStickyNote(item, true))}
+              </div>
+            </div>
+          )}
         </article>
 
         <article className="dash-card dash-card-full">
