@@ -104,41 +104,6 @@ function resolveCityQuery(inputCity) {
   return { queryCity: city, displayCity: city }
 }
 
-async function fetchWeatherData(city, days = 3) {
-  const safeDays = Math.max(1, Math.min(7, Number(days) || 3))
-  const resolved = resolveCityQuery(city)
-  if (!resolved || !resolved.queryCity) {
-    throw new Error('城市名不能为空')
-  }
-  const weatherUrl = `https://wttr.in/${encodeURIComponent(resolved.queryCity)}?format=j1&num_of_days=${safeDays}`
-  const weatherResponse = await fetch(weatherUrl)
-  if (!weatherResponse.ok) {
-    throw new Error(`天气查询失败（HTTP ${weatherResponse.status}）`)
-  }
-
-  const weatherData = await weatherResponse.json()
-  return { resolved, weatherData }
-}
-
-async function queryLiveWeather(city) {
-  const { resolved, weatherData } = await fetchWeatherData(city, 1)
-  const current = weatherData?.current_condition?.[0]
-  if (!current) {
-    throw new Error('天气服务未返回实时数据')
-  }
-
-  const weatherText = current?.weatherDesc?.[0]?.value || '未知'
-  const tempC = Number(current.temp_C)
-  const humidity = Number(current.humidity)
-  if (!Number.isFinite(tempC)) {
-    throw new Error('天气服务返回的温度字段无效')
-  }
-  const normalizedTemp = Math.round(tempC)
-  const normalizedHumidity = Number.isFinite(humidity) ? Math.round(humidity) : 0
-
-  return `${resolved.displayCity} 当前${weatherText}，气温 ${normalizedTemp}°C，湿度 ${normalizedHumidity}%`
-}
-
 function weatherCodeToText(code) {
   const map = {
     0: '晴',
@@ -178,86 +143,24 @@ function normalizeWeatherLabel(text) {
   if (!value) return '未知天气'
   const lower = value.toLowerCase()
 
-  if (lower.includes('thunder') || value.includes('雷') || value.includes('雷暴')) {
-    return '雷雨天'
-  }
-  if (
-    lower.includes('snow') ||
-    lower.includes('sleet') ||
-    value.includes('雪') ||
-    value.includes('冰雹')
-  ) {
-    return '雪天'
-  }
-  if (
-    lower.includes('rain') ||
-    lower.includes('drizzle') ||
-    lower.includes('shower') ||
-    value.includes('雨')
-  ) {
-    return '雨天'
-  }
-  if (
-    lower.includes('cloud') ||
-    lower.includes('overcast') ||
-    lower.includes('fog') ||
-    lower.includes('mist') ||
-    value.includes('阴') ||
-    value.includes('云') ||
-    value.includes('雾')
-  ) {
-    return '阴天'
-  }
-  if (lower.includes('sun') || lower.includes('clear') || value.includes('晴')) {
-    return '晴天'
-  }
-
+  if (lower.includes('thunder') || value.includes('雷') || value.includes('雷暴')) return '雷雨天'
+  if (lower.includes('snow') || lower.includes('sleet') || value.includes('雪') || value.includes('冰雹')) return '雪天'
+  if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower') || value.includes('雨')) return '雨天'
+  if (lower.includes('cloud') || lower.includes('overcast') || lower.includes('fog') || lower.includes('mist') || value.includes('阴') || value.includes('云') || value.includes('雾')) return '阴天'
+  if (lower.includes('sun') || lower.includes('clear') || value.includes('晴')) return '晴天'
   return `${value}天`
 }
 
-async function queryRecentWeatherDaysByOpenMeteo(city, days) {
-  const safeDays = Math.max(1, Math.min(7, Number(days) || 5))
-  const resolved = resolveCityQuery(city)
-  if (!resolved || !resolved.queryCity) {
-    throw new Error('城市名不能为空')
-  }
-
-  const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(resolved.queryCity)}&count=1&language=zh&format=json`
-  const geoResponse = await fetch(geoUrl)
-  if (!geoResponse.ok) {
-    throw new Error(`地理编码失败（HTTP ${geoResponse.status}）`)
-  }
-  const geoData = await geoResponse.json()
-  const first = geoData?.results?.[0]
-  if (!first || !Number.isFinite(first.latitude) || !Number.isFinite(first.longitude)) {
-    throw new Error('未找到该城市的经纬度信息')
-  }
-
-  const forecastUrl =
-    `https://api.open-meteo.com/v1/forecast?latitude=${first.latitude}` +
-    `&longitude=${first.longitude}` +
-    '&timezone=Asia%2FShanghai' +
-    `&forecast_days=${safeDays}` +
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean'
-  const forecastResponse = await fetch(forecastUrl)
-  if (!forecastResponse.ok) {
-    throw new Error(`天气预报查询失败（HTTP ${forecastResponse.status}）`)
-  }
-  const forecastData = await forecastResponse.json()
-  const daily = forecastData?.daily
+function parseForecastData(daily, safeDays) {
   const times = Array.isArray(daily?.time) ? daily.time : []
   const maxTemps = Array.isArray(daily?.temperature_2m_max) ? daily.temperature_2m_max : []
   const minTemps = Array.isArray(daily?.temperature_2m_min) ? daily.temperature_2m_min : []
-  const humidities = Array.isArray(daily?.relative_humidity_2m_mean)
-    ? daily.relative_humidity_2m_mean
-    : []
+  const humidities = Array.isArray(daily?.relative_humidity_2m_mean) ? daily.relative_humidity_2m_mean : []
   const weatherCodes = Array.isArray(daily?.weather_code) ? daily.weather_code : []
 
-  if (times.length === 0) {
-    throw new Error('天气服务未返回天气预报数据')
-  }
+  if (times.length === 0) throw new Error('天气服务未返回预报数据')
 
-  const forecast = times.slice(0, safeDays).map((date, index) => {
+  return times.slice(0, safeDays).map((date, index) => {
     const maxTemp = Number(maxTemps[index])
     const minTemp = Number(minTemps[index])
     const humidity = Number(humidities[index])
@@ -270,92 +173,121 @@ async function queryRecentWeatherDaysByOpenMeteo(city, days) {
       humidity: Number.isFinite(humidity) ? Math.round(humidity) : null,
     }
   })
+}
 
+// Fetch weather by lat/lon directly — no geocoding needed
+async function fetchWeatherByCoords(lat, lon, days) {
+  const safeDays = Math.max(1, Math.min(7, Number(days) || 3))
+  const url =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=${lat}&longitude=${lon}` +
+    `&timezone=auto` +
+    `&forecast_days=${safeDays}` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean` +
+    `&current=temperature_2m,relative_humidity_2m,weather_code`
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  if (!response.ok) throw new Error(`Open-Meteo 请求失败（HTTP ${response.status}）`)
+  return response.json()
+}
+
+// Fetch weather by city name — geocodes first, then fetches
+async function fetchWeatherByCity(city, days) {
+  const safeDays = Math.max(1, Math.min(7, Number(days) || 3))
+  const resolved = resolveCityQuery(city)
+  if (!resolved?.queryCity) throw new Error('城市名不能为空')
+
+  const geoUrl =
+    `https://geocoding-api.open-meteo.com/v1/search` +
+    `?name=${encodeURIComponent(resolved.queryCity)}&count=1&language=zh&format=json`
+
+  const geoResponse = await fetch(geoUrl, { signal: AbortSignal.timeout(8000) })
+  if (!geoResponse.ok) throw new Error(`地理编码失败（HTTP ${geoResponse.status}）`)
+
+  const geoData = await geoResponse.json()
+  const first = geoData?.results?.[0]
+  if (!first || !Number.isFinite(first.latitude) || !Number.isFinite(first.longitude)) {
+    throw new Error(`未找到城市「${resolved.queryCity}」的位置信息`)
+  }
+
+  const forecastData = await fetchWeatherByCoords(first.latitude, first.longitude, safeDays)
+  return { forecastData, resolved, lat: first.latitude, lon: first.longitude }
+}
+
+// Main: query recent N-day forecast. Accepts city string or { city, lat, lon }
+async function queryRecentWeatherDays(cityOrOptions, days = 3) {
+  const safeDays = Math.max(1, Math.min(7, Number(days) || 3))
+
+  // If lat/lon provided, skip geocoding entirely
+  if (
+    typeof cityOrOptions === 'object' &&
+    cityOrOptions !== null &&
+    Number.isFinite(Number(cityOrOptions.lat)) &&
+    Number.isFinite(Number(cityOrOptions.lon))
+  ) {
+    const { lat, lon } = cityOrOptions
+    const cityName = String(cityOrOptions.city || WEATHER_DEFAULT_CITY)
+    const forecastData = await fetchWeatherByCoords(Number(lat), Number(lon), safeDays)
+    const forecast = parseForecastData(forecastData.daily, safeDays)
+    return {
+      city: cityName,
+      days: safeDays,
+      forecast,
+      availableDays: forecast.length,
+      source: 'open-meteo',
+    }
+  }
+
+  // City name path — geocode first
+  const city = typeof cityOrOptions === 'string' ? cityOrOptions : String(cityOrOptions || WEATHER_DEFAULT_CITY)
+  const { forecastData, resolved } = await fetchWeatherByCity(city, safeDays)
+  const forecast = parseForecastData(forecastData.daily, safeDays)
   return {
     city: resolved.displayCity,
     days: safeDays,
     forecast,
+    availableDays: forecast.length,
     source: 'open-meteo',
   }
 }
 
-async function queryRecentWeatherDays(city, days = 3) {
-  const safeDays = Math.max(1, Math.min(7, Number(days) || 5))
-  let resolved = null
-  let rows = []
-  try {
-    const result = await fetchWeatherData(city, safeDays)
-    resolved = result.resolved
-    rows = Array.isArray(result.weatherData?.weather)
-      ? result.weatherData.weather.slice(0, safeDays)
-      : []
-  } catch (_error) {
-    rows = []
-  }
+// For AI chat tool: current conditions
+async function queryLiveWeather(city) {
+  const resolved = resolveCityQuery(city)
+  const { forecastData } = await fetchWeatherByCity(resolved.queryCity, 1)
 
-  if (rows.length < safeDays) {
-    const fallback = await queryRecentWeatherDaysByOpenMeteo(city, safeDays)
-    return {
-      ...fallback,
-      availableDays: fallback.forecast.length,
-    }
-  }
+  const current = forecastData?.current
+  if (!current) throw new Error('天气服务未返回实时数据')
 
-  const forecast = rows.map((item) => {
-    const date = String(item?.date || '')
-    const maxTemp = Number(item?.maxtempC)
-    const minTemp = Number(item?.mintempC)
-    const avgHumidity = Number(item?.hourly?.[0]?.humidity)
-    const weatherText =
-      item?.hourly?.[0]?.weatherDesc?.[0]?.value ||
-      item?.hourly?.[4]?.weatherDesc?.[0]?.value ||
-      '未知'
-    return {
-      date,
-      weather: normalizeWeatherLabel(weatherText),
-      maxTempC: Number.isFinite(maxTemp) ? Math.round(maxTemp) : null,
-      minTempC: Number.isFinite(minTemp) ? Math.round(minTemp) : null,
-      humidity: Number.isFinite(avgHumidity) ? Math.round(avgHumidity) : null,
-    }
-  })
+  const tempC = Number(current.temperature_2m)
+  const humidity = Number(current.relative_humidity_2m)
+  const weatherText = weatherCodeToText(Number(current.weather_code))
+  if (!Number.isFinite(tempC)) throw new Error('天气服务返回的温度字段无效')
 
-  return {
-    city: resolved?.displayCity || city,
-    days: safeDays,
-    forecast,
-    source: 'wttr',
-    availableDays: forecast.length,
-  }
+  return `${resolved.displayCity} 当前${normalizeWeatherLabel(weatherText)}，气温 ${Math.round(tempC)}°C，湿度 ${Math.round(humidity)}%`
 }
 
-function formatRecentWeatherResult(result) {
-  const rows = Array.isArray(result?.forecast) ? result.forecast : []
-  if (!rows.length) {
-    return `${result?.city || WEATHER_DEFAULT_CITY} 暂无天气数据`
-  }
-  const lines = rows.map((item) => {
-    const date = String(item?.date || '').trim() || '--'
-    const weather = String(item?.weather || '未知')
-    const minTemp = Number.isFinite(Number(item?.minTempC)) ? `${item.minTempC}°C` : '--'
-    const maxTemp = Number.isFinite(Number(item?.maxTempC)) ? `${item.maxTempC}°C` : '--'
-    const humidity = Number.isFinite(Number(item?.humidity)) ? `${item.humidity}%` : '--'
-    return `- ${date} ${weather}，${minTemp} ~ ${maxTemp}，湿度 ${humidity}`
-  })
-  return `${result.city} 最近 ${result.days} 天天气：\n${lines.join('\n')}`
-}
-
+// IP → city + lat/lon
 async function queryCityByIp() {
   const plans = [
     {
       source: 'ip-api.com',
-      url: 'http://ip-api.com/json/?lang=zh-CN',
-      readCity: (json) => String(json?.city || '').trim(),
+      url: 'http://ip-api.com/json/?lang=zh-CN&fields=status,message,city,lat,lon',
+      read: (json) => ({
+        city: String(json?.city || '').trim(),
+        lat: Number(json?.lat) || null,
+        lon: Number(json?.lon) || null,
+      }),
       checkError: (json) => (json?.status === 'fail' ? String(json?.message || '定位失败') : ''),
     },
     {
       source: 'ipapi.co',
       url: 'https://ipapi.co/json/',
-      readCity: (json) => String(json?.city || '').trim(),
+      read: (json) => ({
+        city: String(json?.city || '').trim(),
+        lat: Number(json?.latitude) || null,
+        lon: Number(json?.longitude) || null,
+      }),
       checkError: (json) => String(json?.error || '').trim(),
     },
   ]
@@ -365,6 +297,7 @@ async function queryCityByIp() {
     try {
       const response = await fetch(plan.url, {
         headers: { 'User-Agent': 'even-dashboard/1.0' },
+        signal: AbortSignal.timeout(6000),
       })
       if (!response.ok) {
         errors.push(`${plan.source}: HTTP ${response.status}`)
@@ -376,16 +309,12 @@ async function queryCityByIp() {
         errors.push(`${plan.source}: ${apiError}`)
         continue
       }
-      const city = plan.readCity(json)
+      const { city, lat, lon } = plan.read(json)
       if (!city) {
         errors.push(`${plan.source}: 未返回城市`)
         continue
       }
-      return {
-        ok: true,
-        city,
-        source: plan.source,
-      }
+      return { ok: true, city, lat, lon, source: plan.source }
     } catch (error) {
       errors.push(`${plan.source}: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -393,9 +322,25 @@ async function queryCityByIp() {
   return {
     ok: false,
     city: '',
+    lat: null,
+    lon: null,
     source: 'ip-api.com/ipapi.co',
     message: errors.join(' | ') || 'IP 定位失败',
   }
+}
+
+function formatRecentWeatherResult(result) {
+  const rows = Array.isArray(result?.forecast) ? result.forecast : []
+  if (!rows.length) return `${result?.city || WEATHER_DEFAULT_CITY} 暂无天气数据`
+  const lines = rows.map((item) => {
+    const date = String(item?.date || '').trim() || '--'
+    const weather = String(item?.weather || '未知')
+    const minTemp = Number.isFinite(Number(item?.minTempC)) ? `${item.minTempC}°C` : '--'
+    const maxTemp = Number.isFinite(Number(item?.maxTempC)) ? `${item.maxTempC}°C` : '--'
+    const humidity = Number.isFinite(Number(item?.humidity)) ? `${item.humidity}%` : '--'
+    return `- ${date} ${weather}，${minTemp} ~ ${maxTemp}，湿度 ${humidity}`
+  })
+  return `${result.city} 最近 ${result.days} 天天气：\n${lines.join('\n')}`
 }
 
 module.exports = {

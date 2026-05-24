@@ -325,11 +325,21 @@ api.post('/ai/chat', async (req, res) => {
 
 api.get('/weather/recent', async (req, res) => {
   const cityRaw = req.query?.city
-  const city = typeof cityRaw === 'string' && cityRaw.trim() ? cityRaw.trim() : '杭州'
+  const city = typeof cityRaw === 'string' && cityRaw.trim() ? cityRaw.trim() : ''
   const daysRaw = req.query?.days
   const days = typeof daysRaw === 'string' ? Number(daysRaw) : 3
+  const latRaw = req.query?.lat
+  const lonRaw = req.query?.lon
+  const lat = typeof latRaw === 'string' ? Number(latRaw) : NaN
+  const lon = typeof lonRaw === 'string' ? Number(lonRaw) : NaN
+
   try {
-    const weather = await queryRecentWeatherDays(city, days)
+    let weather
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      weather = await queryRecentWeatherDays({ city: city || undefined, lat, lon }, days)
+    } else {
+      weather = await queryRecentWeatherDays(city || '杭州', days)
+    }
     res.json({ ok: true, ...weather })
   } catch (error) {
     res.status(500).json({
@@ -345,41 +355,43 @@ api.get('/weather/city-by-ip', async (req, res) => {
     clientIp === '::1' || clientIp === '127.0.0.1' || clientIp === '::ffff:127.0.0.1'
       ? ''
       : clientIp
-  const lookupPlans = normalizedIp
+
+  const plans = normalizedIp
     ? [
         {
           source: 'ip-api.com',
-          url: `http://ip-api.com/json/${encodeURIComponent(normalizedIp)}?lang=zh-CN`,
-          readCity: (json) => String(json?.city || '').trim(),
+          url: `http://ip-api.com/json/${encodeURIComponent(normalizedIp)}?lang=zh-CN&fields=status,message,city,lat,lon`,
+          read: (json) => ({ city: String(json?.city || '').trim(), lat: Number(json?.lat) || null, lon: Number(json?.lon) || null }),
           checkError: (json) => (json?.status === 'fail' ? String(json?.message || '定位失败') : ''),
         },
         {
           source: 'ipapi.co',
           url: `https://ipapi.co/${encodeURIComponent(normalizedIp)}/json/`,
-          readCity: (json) => String(json?.city || '').trim(),
+          read: (json) => ({ city: String(json?.city || '').trim(), lat: Number(json?.latitude) || null, lon: Number(json?.longitude) || null }),
           checkError: (json) => String(json?.error || '').trim(),
         },
       ]
     : [
         {
           source: 'ip-api.com',
-          url: 'http://ip-api.com/json/?lang=zh-CN',
-          readCity: (json) => String(json?.city || '').trim(),
+          url: 'http://ip-api.com/json/?lang=zh-CN&fields=status,message,city,lat,lon',
+          read: (json) => ({ city: String(json?.city || '').trim(), lat: Number(json?.lat) || null, lon: Number(json?.lon) || null }),
           checkError: (json) => (json?.status === 'fail' ? String(json?.message || '定位失败') : ''),
         },
         {
           source: 'ipapi.co',
           url: 'https://ipapi.co/json/',
-          readCity: (json) => String(json?.city || '').trim(),
+          read: (json) => ({ city: String(json?.city || '').trim(), lat: Number(json?.latitude) || null, lon: Number(json?.longitude) || null }),
           checkError: (json) => String(json?.error || '').trim(),
         },
       ]
 
   const errors = []
-  for (const plan of lookupPlans) {
+  for (const plan of plans) {
     try {
       const response = await fetch(plan.url, {
         headers: { 'User-Agent': 'even-dashboard/1.0' },
+        signal: AbortSignal.timeout(6000),
       })
       if (!response.ok) {
         errors.push(`${plan.source}: HTTP ${response.status}`)
@@ -391,17 +403,12 @@ api.get('/weather/city-by-ip', async (req, res) => {
         errors.push(`${plan.source}: ${apiError}`)
         continue
       }
-      const city = plan.readCity(json)
+      const { city, lat, lon } = plan.read(json)
       if (!city) {
         errors.push(`${plan.source}: 未返回城市`)
         continue
       }
-      res.json({
-        ok: true,
-        city,
-        ip: clientIp || null,
-        source: plan.source,
-      })
+      res.json({ ok: true, city, lat, lon, ip: clientIp || null, source: plan.source })
       return
     } catch (error) {
       errors.push(`${plan.source}: ${error instanceof Error ? error.message : String(error)}`)
@@ -410,8 +417,10 @@ api.get('/weather/city-by-ip', async (req, res) => {
   res.status(200).json({
     ok: false,
     city: '',
+    lat: null,
+    lon: null,
     ip: clientIp || null,
-    source: 'ipapi.co/ip-api.com',
+    source: 'ip-api.com/ipapi.co',
     message: errors.length ? errors.join(' | ') : 'IP 定位失败',
   })
 })

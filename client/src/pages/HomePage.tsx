@@ -23,6 +23,8 @@ type RecentWeatherResponse = {
 type IpCityResponse = {
   ok: boolean
   city?: string
+  lat?: number | null
+  lon?: number | null
 }
 
 type TodoItem = {
@@ -191,19 +193,30 @@ export function HomePage() {
       setWeatherError(null)
       try {
         let city = ''
+        let lat: number | null = null
+        let lon: number | null = null
         try {
           const cityResponse = await fetch('/api/weather/city-by-ip')
           const cityJson = (await cityResponse.json()) as IpCityResponse
           if (cityResponse.ok && cityJson?.ok && typeof cityJson.city === 'string') {
             city = cityJson.city.trim()
+            lat = typeof cityJson.lat === 'number' ? cityJson.lat : null
+            lon = typeof cityJson.lon === 'number' ? cityJson.lon : null
           }
         } catch {
           city = ''
         }
 
-        const weatherUrl = city
-          ? `/api/weather/recent?days=3&city=${encodeURIComponent(city)}`
-          : '/api/weather/recent?days=3'
+        let weatherUrl: string
+        if (lat !== null && lon !== null) {
+          const params = new URLSearchParams({ days: '3', lat: String(lat), lon: String(lon) })
+          if (city) params.set('city', city)
+          weatherUrl = `/api/weather/recent?${params.toString()}`
+        } else if (city) {
+          weatherUrl = `/api/weather/recent?days=3&city=${encodeURIComponent(city)}`
+        } else {
+          weatherUrl = '/api/weather/recent?days=3'
+        }
         const response = await fetch(weatherUrl)
         const json = (await response.json()) as RecentWeatherResponse
         if (!response.ok || !json.ok) {
@@ -523,36 +536,20 @@ export function HomePage() {
   }
 
   return (
-    <section className="page-shell home-page-fit">
-      <header className="page-hero">
-        <h2>今日概览</h2>
-        <p className="muted">在一个页面里快速处理待办、查看天气并与 AI 助手联动。</p>
-      </header>
-      <div className="home-layout">
-        <div className="home-main">
-        <article className="dash-card home-todo-card">
-          <div className="todo-board-header">
-            <div className="todo-board-title">
-              <h3>待办事项</h3>
-              {!todoLoading && todoItems.filter((i) => !i.hidden).length > 0 && (
-                <span className="todo-board-count">
-                  {todoItems.filter((i) => !i.hidden && i.done).length} / {todoItems.filter((i) => !i.hidden).length} 完成
-                </span>
-              )}
-              {todoLoading && <span className="muted todo-board-loading">加载中…</span>}
-            </div>
-            {hiddenTodos.length > 0 && (
-              <button
-                type="button"
-                className="todo-hidden-toggle"
-                onClick={() => setShowHidden(!showHidden)}
-              >
-                {showHidden ? '收起已隐藏' : `${hiddenTodos.length} 个已隐藏`}
-              </button>
+    <div className="home-fullscreen">
+      {/* 左侧：便利贴看板（主视觉区） */}
+      <div className="home-board-area">
+        <div className="home-board-topbar">
+          <div className="home-board-title-group">
+            <h2>待办事项</h2>
+            {!todoLoading && todoItems.filter((i) => !i.hidden).length > 0 && (
+              <span className="todo-board-count">
+                {todoItems.filter((i) => !i.hidden && i.done).length} / {todoItems.filter((i) => !i.hidden).length} 完成
+              </span>
             )}
+            {todoLoading && <span className="muted todo-board-loading">加载中…</span>}
           </div>
-
-          <div className="todo-create-row">
+          <div className="home-board-add-row">
             <input
               className="todo-input"
               value={newTodoText}
@@ -567,7 +564,7 @@ export function HomePage() {
               }}
             />
             <input
-              className="todo-input todo-time-input"
+              className="todo-input todo-time-input home-board-time-input"
               type="datetime-local"
               value={newTodoTime}
               disabled={todoSaving}
@@ -577,7 +574,18 @@ export function HomePage() {
               添加
             </button>
           </div>
+          {hiddenTodos.length > 0 && (
+            <button
+              type="button"
+              className="todo-hidden-toggle"
+              onClick={() => setShowHidden(!showHidden)}
+            >
+              {showHidden ? '收起已隐藏' : `${hiddenTodos.length} 个已隐藏`}
+            </button>
+          )}
+        </div>
 
+        <div className="home-board-notes">
           {todoError ? <p className="weather-error">待办操作失败：{todoError}</p> : null}
           {!todoLoading && todoItems.filter((i) => !i.hidden).length === 0 && (
             <p className="muted">暂无待办，先加一条吧。</p>
@@ -609,16 +617,17 @@ export function HomePage() {
               </div>
             </div>
           )}
-        </article>
+        </div>
+      </div>
 
-        <article className="dash-card dash-card-full">
+      {/* 右侧：天气 + AI 助手 */}
+      <aside className="home-right-panel">
+        <div className="home-weather-widget">
           <div className="dash-card-header">
             <h3>最近 3 天天气</h3>
             <span className="muted">
               {weatherData?.city || '加载中'}
-              {weatherData?.availableDays
-                ? ` · 已展示 ${weatherData.availableDays} 天`
-                : ''}
+              {weatherData?.availableDays ? ` · ${weatherData.availableDays} 天` : ''}
             </span>
           </div>
 
@@ -647,81 +656,42 @@ export function HomePage() {
                     role="img"
                     aria-label="最近天气温度趋势图"
                   >
-                    <line
-                      x1="20"
-                      y1="18"
-                      x2="20"
-                      y2={weatherChart.height - 28}
-                      className="weather-chart-axis"
-                    />
-                    <line
-                      x1="20"
-                      y1={weatherChart.height - 28}
-                      x2={weatherChart.width - 20}
-                      y2={weatherChart.height - 28}
-                      className="weather-chart-axis"
-                    />
+                    <line x1="20" y1="18" x2="20" y2={weatherChart.height - 28} className="weather-chart-axis" />
+                    <line x1="20" y1={weatherChart.height - 28} x2={weatherChart.width - 20} y2={weatherChart.height - 28} className="weather-chart-axis" />
                     <polyline points={weatherChart.maxLine} className="weather-chart-line-max" />
                     <polyline points={weatherChart.minLine} className="weather-chart-line-min" />
                     {weatherChart.items.map((item, index) => (
                       <g key={`${item.date}-${index}`}>
-                        <circle
-                          cx={weatherChart.xAt(index)}
-                          cy={weatherChart.yAt(item.maxTempC!)}
-                          r="3"
-                          className="weather-chart-point-max"
-                        />
-                        <circle
-                          cx={weatherChart.xAt(index)}
-                          cy={weatherChart.yAt(item.minTempC!)}
-                          r="3"
-                          className="weather-chart-point-min"
-                        />
-                        <text
-                          x={weatherChart.xAt(index)}
-                          y={weatherChart.height - 10}
-                          textAnchor="middle"
-                          className="weather-chart-label"
-                        >
+                        <circle cx={weatherChart.xAt(index)} cy={weatherChart.yAt(item.maxTempC!)} r="3" className="weather-chart-point-max" />
+                        <circle cx={weatherChart.xAt(index)} cy={weatherChart.yAt(item.minTempC!)} r="3" className="weather-chart-point-min" />
+                        <text x={weatherChart.xAt(index)} y={weatherChart.height - 10} textAnchor="middle" className="weather-chart-label">
                           {formatMmDd(item.date)}
                         </text>
                       </g>
                     ))}
-                    <text x="4" y="22" className="weather-chart-temp-label">
-                      {weatherChart.tempMax}°
-                    </text>
-                    <text
-                      x="4"
-                      y={weatherChart.height - 32}
-                      className="weather-chart-temp-label"
-                    >
-                      {weatherChart.tempMin}°
-                    </text>
+                    <text x="4" y="22" className="weather-chart-temp-label">{weatherChart.tempMax}°</text>
+                    <text x="4" y={weatherChart.height - 32} className="weather-chart-temp-label">{weatherChart.tempMin}°</text>
                   </svg>
                 </div>
               )}
-
               <ul className="weather-list">
                 {weatherData.forecast.map((item) => (
                   <li key={item.date}>
                     <strong>{formatMmDd(item.date)}</strong>
                     <span>{item.weather}</span>
-                    <span>
-                      {item.minTempC ?? '--'}°C ~ {item.maxTempC ?? '--'}°C
-                    </span>
+                    <span>{item.minTempC ?? '--'}°C ~ {item.maxTempC ?? '--'}°C</span>
                     <span>湿度 {item.humidity ?? '--'}%</span>
                   </li>
                 ))}
               </ul>
             </>
           ) : null}
-        </article>
         </div>
 
-        <aside className="home-ai-side">
+        <div className="home-ai-panel">
           <AiChatBox />
-        </aside>
-      </div>
-    </section>
+        </div>
+      </aside>
+    </div>
   )
 }

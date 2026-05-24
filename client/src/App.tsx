@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { requestWithFetch } from './services/http'
 import { writeCachedBillStages } from './utils/billStageCache'
 
@@ -52,6 +52,8 @@ function writeAccessCache(storageKey: string) {
 }
 
 export function App() {
+  const location = useLocation()
+
   const [checkingAccess, setCheckingAccess] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [accessEnv, setAccessEnv] = useState('local')
@@ -192,7 +194,7 @@ export function App() {
             <NavLink to="/asset-manager">资产管家</NavLink>
           </nav>
         </header>
-        <main className="app-main">
+        <main className={`app-main${location.pathname === '/' ? ' app-main--home' : ''}`}>
           <Outlet />
         </main>
         <footer className="app-footer">

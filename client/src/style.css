@@ -621,7 +621,149 @@ button:focus-visible {
   border-radius: 8px;
 }
 
-/* ── Sticky Note Board ───────────────────────────── */
+/* ── Home Page: Full Screen Layout ──────────────────── */
+
+.app-main--home {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.home-fullscreen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  height: 100%;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.home-board-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #fafaf9;
+  background-image: radial-gradient(circle, #dde4ee 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.home-board-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.home-board-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.home-board-title-group h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.home-board-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.home-board-add-row .todo-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-board-time-input {
+  width: 172px;
+  flex-shrink: 0;
+}
+
+.home-board-notes {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+
+.home-board-notes .sticky-note {
+  width: 178px;
+  min-height: 158px;
+}
+
+.home-board-notes .sticky-note.is-editing {
+  min-height: 210px;
+}
+
+.home-right-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border-left: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.home-weather-widget {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 42vh;
+}
+
+.home-weather-widget h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.home-weather-widget .weather-chart {
+  height: 140px;
+}
+
+.home-ai-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+.home-ai-panel .chat-panel {
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  margin-top: 0;
+}
+
+.home-ai-panel .chat-messages {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+
 
 .todo-board-header {
   display: flex;
@@ -2276,6 +2418,43 @@ button:focus-visible {
   .home-layout {
     grid-template-columns: 1fr;
     min-height: auto;
+  }
+
+  .home-fullscreen {
+    grid-template-columns: 1fr;
+    border-radius: 0;
+  }
+
+  .home-right-panel {
+    border-left: none;
+    border-top: 1px solid #e2e8f0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .home-weather-widget {
+    max-height: none;
+  }
+
+  .home-ai-panel {
+    min-height: 360px;
+  }
+
+  .home-board-notes .sticky-note {
+    width: calc(50% - 6px);
+  }
+
+  .home-board-add-row {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .home-board-time-input {
+    display: none;
+  }
+
+  .app-main--home {
+    border-radius: 0;
   }
 
   .home-page-fit {
