@@ -14,7 +14,6 @@ function _saveCache(obj) {
     fs.writeFileSync(CACHE_FILE, JSON.stringify(obj))
   } catch {}
 }
-
 const _cache = _loadCache()
 
 function _get(key) {
@@ -62,21 +61,17 @@ function extractCityFromWeatherQuery(input) {
   const text = sanitizeCityInput(input)
   if (!text) return ''
   if (CITY_ALIASES[text]) return CITY_ALIASES[text]
-
   const candidate = text
     .replace(/(帮我|麻烦|请|想问|问下|查下|查一?下|看下|看一?下|告诉我)/g, ' ')
     .replace(/(今天|明天|后天|现在|近期|最近|这几天|这两天)/g, ' ')
     .replace(/(天气|气温|温度|湿度|风力|风速|降雨|降水|预报|空气质量|体感)/g, ' ')
     .replace(/(怎么样|如何|多少|几度|冷不冷|热不热|吗|呢)/g, ' ')
     .replace(/\s+/g, ' ').trim()
-
   if (!candidate) return ''
   if (CITY_ALIASES[candidate]) return CITY_ALIASES[candidate]
-
   const m = candidate.match(/([\u4e00-\u9fa5]{2,}(?:市|自治州|地区|盟|特别行政区|县|区|旗)?)/)
   if (!m) return ''
-  const normalized = m[1]
-    .replace(/特别行政区$|自治区$|自治州$|地区$|盟$|市$/, '').trim()
+  const normalized = m[1].replace(/特别行政区$|自治区$|自治州$|地区$|盟$|市$/, '').trim()
   if (!normalized) return ''
   return CITY_ALIASES[normalized] || normalized
 }
@@ -90,124 +85,121 @@ function resolveCityQuery(inputCity) {
   return { queryCity: city, displayCity: city }
 }
 
-// ── Weather code / label helpers ─────────────────────────────────────────────
+// ── Label helpers (for Open-Meteo fallback) ───────────────────────────────────
 function weatherCodeToText(code) {
   const map = {
     0: '晴', 1: '晴间多云', 2: '多云', 3: '阴',
     45: '雾', 48: '雾凇',
-    51: '小毛雨', 53: '毛毛雨', 55: '强毛毛雨', 56: '冻毛毛雨', 57: '强冻毛毛雨',
-    61: '小雨', 63: '中雨', 65: '大雨', 66: '冻雨', 67: '强冻雨',
+    51: '小毛雨', 53: '毛毛雨', 55: '强毛毛雨',
+    61: '小雨', 63: '中雨', 65: '大雨',
     71: '小雪', 73: '中雪', 75: '大雪', 77: '冰粒',
-    80: '小阵雨', 81: '中阵雨', 82: '强阵雨', 85: '小阵雪', 86: '强阵雪',
+    80: '小阵雨', 81: '中阵雨', 82: '强阵雨',
+    85: '小阵雪', 86: '强阵雪',
     95: '雷阵雨', 96: '雷阵雨夹小冰雹', 99: '雷阵雨夹大冰雹',
   }
   return map[code] || '未知'
 }
 
-function normalizeWeatherLabel(text) {
-  const v = String(text || '').trim()
-  if (!v) return '未知天气'
-  const l = v.toLowerCase()
-  if (l.includes('thunder') || v.includes('雷')) return '雷雨天'
-  if (l.includes('snow') || l.includes('sleet') || v.includes('雪') || v.includes('冰雹')) return '雪天'
-  if (l.includes('rain') || l.includes('drizzle') || l.includes('shower') || v.includes('雨')) return '雨天'
-  if (l.includes('cloud') || l.includes('overcast') || l.includes('fog') || l.includes('mist') || v.includes('阴') || v.includes('云') || v.includes('雾')) return '阴天'
-  if (l.includes('sun') || l.includes('clear') || v.includes('晴')) return '晴天'
-  return `${v}天`
-}
+// ── QWeather (和风天气) ────────────────────────────────────────────────────────
+// Note: QWeather uses lon,lat order (longitude first)
+const QWEATHER_KEY = process.env.QWEATHER_KEY || ''
+const QW_BASE = 'https://devapi.qweather.com/v7'
+const QW_GEO_BASE = 'https://geoapi.qweather.com/v2'
 
-// ── Parsers ───────────────────────────────────────────────────────────────────
-function parseOpenMeteoForecast(daily, safeDays) {
-  const times = Array.isArray(daily?.time) ? daily.time : []
-  if (times.length === 0) throw new Error('天气服务未返回预报数据')
-  const maxTemps = daily?.temperature_2m_max || []
-  const minTemps = daily?.temperature_2m_min || []
-  const humidities = daily?.relative_humidity_2m_mean || []
-  const codes = daily?.weather_code || []
-  return times.slice(0, safeDays).map((date, i) => {
-    const maxT = Number(maxTemps[i]), minT = Number(minTemps[i]), hum = Number(humidities[i])
-    return {
-      date: String(date || ''),
-      weather: normalizeWeatherLabel(weatherCodeToText(Number(codes[i]))),
-      maxTempC: Number.isFinite(maxT) ? Math.round(maxT) : null,
-      minTempC: Number.isFinite(minT) ? Math.round(minT) : null,
-      humidity: Number.isFinite(hum) ? Math.round(hum) : null,
-    }
-  })
-}
-
-function parseWttrForecast(data, safeDays) {
-  const rows = Array.isArray(data?.weather) ? data.weather.slice(0, safeDays) : []
-  if (rows.length === 0) throw new Error('天气服务未返回预报数据')
-  return rows.map((item) => {
-    const maxT = Number(item?.maxtempC), minT = Number(item?.mintempC)
-    const hum = Number(item?.hourly?.[4]?.humidity ?? item?.hourly?.[0]?.humidity)
-    const desc = item?.hourly?.[4]?.weatherDesc?.[0]?.value || item?.hourly?.[0]?.weatherDesc?.[0]?.value || ''
-    return {
-      date: String(item?.date || ''),
-      weather: normalizeWeatherLabel(desc),
-      maxTempC: Number.isFinite(maxT) ? Math.round(maxT) : null,
-      minTempC: Number.isFinite(minT) ? Math.round(minT) : null,
-      humidity: Number.isFinite(hum) ? Math.round(hum) : null,
-    }
-  })
-}
-
-// ── Core fetch: Open-Meteo primary, wttr.in fallback ─────────────────────────
-async function fetchForecastByCoords(lat, lon, safeDays) {
-  // Primary: Open-Meteo
-  try {
-    const url =
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-      `&timezone=auto&forecast_days=${safeDays}` +
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean` +
-      `&current=temperature_2m,relative_humidity_2m,weather_code`
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
-    if (res.ok) {
-      const data = await res.json()
-      const forecast = parseOpenMeteoForecast(data.daily, safeDays)
-      const c = data.current
-      const current = c ? {
-        tempC: Math.round(Number(c.temperature_2m)),
-        humidity: Math.round(Number(c.relative_humidity_2m)),
-        weatherText: weatherCodeToText(Number(c.weather_code)),
-      } : null
-      return { forecast, current, source: 'open-meteo' }
-    }
-    // fall through to wttr.in on any non-ok status (including 429)
-  } catch {
-    // network error — fall through
-  }
-
-  // Fallback: wttr.in (accepts "lat,lon")
-  const url = `https://wttr.in/${lat},${lon}?format=j1&num_of_days=${safeDays}`
+async function qwFetch(url) {
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
-  if (!res.ok) throw new Error(`天气查询失败（HTTP ${res.status}）`)
+  if (!res.ok) throw new Error(`和风天气请求失败（HTTP ${res.status}）`)
   const data = await res.json()
-  const forecast = parseWttrForecast(data, safeDays)
-  const cc = data.current_condition?.[0]
-  const current = cc ? {
-    tempC: Math.round(Number(cc.temp_C)),
-    humidity: Math.round(Number(cc.humidity)),
-    weatherText: cc.weatherDesc?.[0]?.value || '未知',
-  } : null
-  return { forecast, current, source: 'wttr' }
+  if (data.code !== '200') throw new Error(`和风天气错误码 ${data.code}`)
+  return data
 }
 
+// Forecast by coordinates using QWeather
+async function fetchQWeatherByCoords(lat, lon, safeDays) {
+  const endpoint = safeDays <= 3 ? '3d' : '7d'
+  const data = await qwFetch(`${QW_BASE}/weather/${endpoint}?location=${lon},${lat}&key=${QWEATHER_KEY}&lang=zh`)
+  const rows = Array.isArray(data.daily) ? data.daily.slice(0, safeDays) : []
+  if (rows.length === 0) throw new Error('和风天气未返回预报数据')
+  return rows.map((item) => ({
+    date: String(item.fxDate || ''),
+    weather: String(item.textDay || '未知'),
+    maxTempC: Number.isFinite(Number(item.tempMax)) ? Math.round(Number(item.tempMax)) : null,
+    minTempC: Number.isFinite(Number(item.tempMin)) ? Math.round(Number(item.tempMin)) : null,
+    humidity: Number.isFinite(Number(item.humidity)) ? Math.round(Number(item.humidity)) : null,
+  }))
+}
+
+// Current conditions using QWeather (for AI chat)
+async function fetchQWeatherNow(lat, lon) {
+  const data = await qwFetch(`${QW_BASE}/weather/now?location=${lon},${lat}&key=${QWEATHER_KEY}&lang=zh`)
+  const now = data.now
+  if (!now) throw new Error('和风天气未返回实时数据')
+  return {
+    tempC: Math.round(Number(now.temp)),
+    humidity: Math.round(Number(now.humidity)),
+    weatherText: String(now.text || '未知'),
+  }
+}
+
+// City name → coordinates using QWeather geo API
+async function qwResolveCity(cityName) {
+  const data = await qwFetch(`${QW_GEO_BASE}/city/lookup?location=${encodeURIComponent(cityName)}&key=${QWEATHER_KEY}&lang=zh`)
+  const loc = data.location?.[0]
+  if (!loc || !loc.lat || !loc.lon) throw new Error(`未找到城市「${cityName}」`)
+  return { lat: Number(loc.lat), lon: Number(loc.lon), displayCity: String(loc.name) }
+}
+
+// ── Open-Meteo (fallback) ─────────────────────────────────────────────────────
+async function fetchOpenMeteoByCoords(lat, lon, safeDays) {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&timezone=auto&forecast_days=${safeDays}` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean`
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  if (!res.ok) throw new Error(`Open-Meteo 请求失败（HTTP ${res.status}）`)
+  const data = await res.json()
+  const daily = data.daily
+  const times = Array.isArray(daily?.time) ? daily.time : []
+  if (times.length === 0) throw new Error('Open-Meteo 未返回预报数据')
+  return times.slice(0, safeDays).map((date, i) => ({
+    date: String(date || ''),
+    weather: weatherCodeToText(Number((daily.weather_code || [])[i])),
+    maxTempC: Number.isFinite(Number((daily.temperature_2m_max || [])[i])) ? Math.round(Number((daily.temperature_2m_max || [])[i])) : null,
+    minTempC: Number.isFinite(Number((daily.temperature_2m_min || [])[i])) ? Math.round(Number((daily.temperature_2m_min || [])[i])) : null,
+    humidity: Number.isFinite(Number((daily.relative_humidity_2m_mean || [])[i])) ? Math.round(Number((daily.relative_humidity_2m_mean || [])[i])) : null,
+  }))
+}
+
+// Core: forecast by coords, with fallback
+async function getForecastByCoords(lat, lon, safeDays) {
+  if (QWEATHER_KEY) {
+    try {
+      const forecast = await fetchQWeatherByCoords(lat, lon, safeDays)
+      return { forecast, source: 'qweather' }
+    } catch (err) {
+      console.warn('[weather] QWeather failed, trying Open-Meteo:', err.message)
+    }
+  }
+  const forecast = await fetchOpenMeteoByCoords(lat, lon, safeDays)
+  return { forecast, source: 'open-meteo' }
+}
+
+// City name → coords, QWeather first, Open-Meteo geocoding as fallback
 async function resolveCoordsByCity(city) {
+  if (QWEATHER_KEY) {
+    try {
+      return await qwResolveCity(city)
+    } catch {}
+  }
+  // Open-Meteo geocoding fallback
   const resolved = resolveCityQuery(city)
-  if (!resolved?.queryCity) throw new Error('城市名不能为空')
-  const geoUrl =
-    `https://geocoding-api.open-meteo.com/v1/search` +
-    `?name=${encodeURIComponent(resolved.queryCity)}&count=1&language=zh&format=json`
+  const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(resolved.queryCity)}&count=1&language=zh&format=json`
   const geoRes = await fetch(geoUrl, { signal: AbortSignal.timeout(8000) })
   if (!geoRes.ok) throw new Error(`地理编码失败（HTTP ${geoRes.status}）`)
   const geoData = await geoRes.json()
   const first = geoData?.results?.[0]
-  if (!first || !Number.isFinite(first.latitude) || !Number.isFinite(first.longitude)) {
-    throw new Error(`未找到城市「${resolved.queryCity}」的位置信息`)
-  }
-  return { resolved, lat: first.latitude, lon: first.longitude }
+  if (!first) throw new Error(`未找到城市「${resolved.queryCity}」的位置`)
+  return { lat: first.latitude, lon: first.longitude, displayCity: resolved.displayCity }
 }
 
 // ── Public: recent N-day forecast ────────────────────────────────────────────
@@ -227,27 +219,24 @@ async function queryRecentWeatherDays(cityOrOptions, days = 3) {
     lat = Number(cityOrOptions.lat)
     lon = Number(cityOrOptions.lon)
     cityName = String(cityOrOptions.city || WEATHER_DEFAULT_CITY)
-    // Round to 1 decimal (~10 km) so nearby requests share a cache entry
     cacheKey = `c:${(Math.round(lat * 10) / 10).toFixed(1)},${(Math.round(lon * 10) / 10).toFixed(1)},${safeDays}`
   } else {
     const city = typeof cityOrOptions === 'string' ? cityOrOptions : String(cityOrOptions || WEATHER_DEFAULT_CITY)
     const resolved = resolveCityQuery(city)
     cacheKey = `n:${resolved.queryCity},${safeDays}`
-    cityName = resolved.displayCity
-    // Need to geocode — check cache first before the extra network call
     const cached = _get(cacheKey)
     if (cached) return cached
-    const coords = await resolveCoordsByCity(city)
+    const coords = await resolveCoordsByCity(resolved.queryCity)
     lat = coords.lat
     lon = coords.lon
-    cityName = coords.resolved.displayCity
+    cityName = coords.displayCity
   }
 
   const cached = _get(cacheKey)
   if (cached) return cached
 
-  const { forecast } = await fetchForecastByCoords(lat, lon, safeDays)
-  const result = { city: cityName, days: safeDays, forecast, availableDays: forecast.length, source: 'open-meteo' }
+  const { forecast, source } = await getForecastByCoords(lat, lon, safeDays)
+  const result = { city: cityName, days: safeDays, forecast, availableDays: forecast.length, source }
   _set(cacheKey, result)
   return result
 }
@@ -255,10 +244,15 @@ async function queryRecentWeatherDays(cityOrOptions, days = 3) {
 // ── Public: current conditions (for AI chat tool) ────────────────────────────
 async function queryLiveWeather(city) {
   const resolved = resolveCityQuery(city)
-  const { lat, lon } = await resolveCoordsByCity(resolved.queryCity)
-  const { current } = await fetchForecastByCoords(lat, lon, 1)
-  if (!current) throw new Error('天气服务未返回实时数据')
-  return `${resolved.displayCity} 当前${normalizeWeatherLabel(current.weatherText)}，气温 ${current.tempC}°C，湿度 ${current.humidity}%`
+  const coords = await resolveCoordsByCity(resolved.queryCity)
+  if (QWEATHER_KEY) {
+    const now = await fetchQWeatherNow(coords.lat, coords.lon)
+    return `${coords.displayCity} 当前${now.weatherText}，气温 ${now.tempC}°C，湿度 ${now.humidity}%`
+  }
+  // Fallback: use first day of forecast
+  const forecast = await fetchOpenMeteoByCoords(coords.lat, coords.lon, 1)
+  const d = forecast[0]
+  return `${coords.displayCity} ${d?.weather || ''}，气温 ${d?.minTempC ?? '--'}~${d?.maxTempC ?? '--'}°C`
 }
 
 // ── Public: IP → city + lat/lon ──────────────────────────────────────────────
@@ -299,11 +293,10 @@ function formatRecentWeatherResult(result) {
   const rows = Array.isArray(result?.forecast) ? result.forecast : []
   if (!rows.length) return `${result?.city || WEATHER_DEFAULT_CITY} 暂无天气数据`
   const lines = rows.map((item) => {
-    const date = String(item?.date || '').trim() || '--'
     const minT = Number.isFinite(Number(item?.minTempC)) ? `${item.minTempC}°C` : '--'
     const maxT = Number.isFinite(Number(item?.maxTempC)) ? `${item.maxTempC}°C` : '--'
     const hum = Number.isFinite(Number(item?.humidity)) ? `${item.humidity}%` : '--'
-    return `- ${date} ${item?.weather || '未知'}，${minT} ~ ${maxT}，湿度 ${hum}`
+    return `- ${item?.date || '--'} ${item?.weather || '未知'}，${minT} ~ ${maxT}，湿度 ${hum}`
   })
   return `${result.city} 最近 ${result.days} 天天气：\n${lines.join('\n')}`
 }
