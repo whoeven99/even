@@ -195,16 +195,37 @@ export function HomePage() {
         let city = ''
         let lat: number | null = null
         let lon: number | null = null
-        try {
-          const cityResponse = await fetch('/api/weather/city-by-ip')
-          const cityJson = (await cityResponse.json()) as IpCityResponse
-          if (cityResponse.ok && cityJson?.ok && typeof cityJson.city === 'string') {
-            city = cityJson.city.trim()
-            lat = typeof cityJson.lat === 'number' ? cityJson.lat : null
-            lon = typeof cityJson.lon === 'number' ? cityJson.lon : null
+
+        // 尝试优先使用浏览器实时地理位置（GPS），超时或失败则回退到 IP 定位
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+              const timer = setTimeout(() => reject(new Error('定位超时')), 6000)
+              navigator.geolocation.getCurrentPosition(
+                (p) => { clearTimeout(timer); resolve(p) },
+                (err) => { clearTimeout(timer); reject(err) },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 },
+              )
+            })
+            lat = pos.coords.latitude
+            lon = pos.coords.longitude
+          } catch (err) {
+            // 如果 GPS 定位失败（用户拒绝或超时），继续使用 IP 定位作为回退
           }
-        } catch {
-          city = ''
+        }
+
+        if (lat === null || lon === null) {
+          try {
+            const cityResponse = await fetch('/api/weather/city-by-ip')
+            const cityJson = (await cityResponse.json()) as IpCityResponse
+            if (cityResponse.ok && cityJson?.ok && typeof cityJson.city === 'string') {
+              city = cityJson.city.trim()
+              lat = typeof cityJson.lat === 'number' ? cityJson.lat : null
+              lon = typeof cityJson.lon === 'number' ? cityJson.lon : null
+            }
+          } catch {
+            city = ''
+          }
         }
 
         let weatherUrl: string
