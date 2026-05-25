@@ -1,5 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { requestWithFetch } from '../services/http'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type AccountItem = {
   id: string
@@ -22,6 +39,8 @@ type AssetsResponse = {
   updatedAt: string | null
 }
 
+type SortMode = 'manual' | 'amount-asc' | 'amount-desc'
+
 function formatAmount(value: number) {
   return value.toLocaleString('zh-CN', {
     minimumFractionDigits: 2,
@@ -41,6 +60,7 @@ const PRESET_ICONS = ['◎', '★', '🏠', '🚗', '💳', '💼', '📈', '�
 export function AssetManagerPage() {
   const [groups, setGroups] = useState<AccountGroup[]>([])
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({})
+  const [sortModeMap, setSortModeMap] = useState<Record<string, SortMode>>({})
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
   const [addError, setAddError] = useState('')
   const [loadError, setLoadError] = useState('')
@@ -120,6 +140,197 @@ export function AssetManagerPage() {
     }
   }, [groupSummaries])
 
+  function SortableItem({
+    item,
+    isDraggable,
+  }: {
+    item: AccountItem
+    isDraggable: boolean
+  }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: item.id,
+      disabled: !isDraggable,
+    })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    }
+
+    const isEditingFull = editingFullItemId === item.id
+    const isEditingAmt = editingAmountId === item.id
+    const isDeleteConfirm = deleteConfirmId === item.id
+
+    if (isEditingFull && editItemDraft) {
+      return (
+        <li ref={setNodeRef} style={style} className="am-item am-item-edit">
+          <span className={`am-item-icon am-item-icon-${editItemDraft.tone}`}>
+            {editItemDraft.icon || '◎'}
+          </span>
+          <div className="am-item-edit-form">
+            <div className="am-item-edit-top">
+              <input
+                className="am-icon-input"
+                value={editItemDraft.icon}
+                placeholder="◎"
+                title="图标字符"
+                onChange={(e) => setEditItemDraft((p) => (p ? { ...p, icon: e.target.value } : p))}
+              />
+              <div className="am-tone-picker am-tone-picker-sm">
+                {(['blue', 'red', 'gold', 'purple'] as const).map((tone) => (
+                  <button
+                    key={tone}
+                    type="button"
+                    className={`am-tone-btn am-tone-btn-${tone}${editItemDraft.tone === tone ? ' selected' : ''}`}
+                    onClick={() => setEditItemDraft((p) => (p ? { ...p, tone } : p))}
+                    title={TONE_LABELS[tone]}
+                  />
+                ))}
+              </div>
+            </div>
+            <input
+              className="am-field-input"
+              autoFocus
+              placeholder="名称"
+              value={editItemDraft.name}
+              onChange={(e) => setEditItemDraft((p) => (p ? { ...p, name: e.target.value } : p))}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancelFullEdit()
+              }}
+            />
+            <input
+              className="am-field-input"
+              placeholder="备注（可选）"
+              value={editItemDraft.note}
+              onChange={(e) => setEditItemDraft((p) => (p ? { ...p, note: e.target.value } : p))}
+            />
+            <input
+              className="am-field-input"
+              placeholder="金额（负债填负数）"
+              value={editItemDraft.amount}
+              onChange={(e) =>
+                setEditItemDraft((p) => (p ? { ...p, amount: e.target.value } : p))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  saveFullEdit(item.id)
+                }
+                if (e.key === 'Escape') cancelFullEdit()
+              }}
+            />
+            <div className="am-item-edit-btns">
+              <button
+                type="button"
+                className="am-save-btn"
+                disabled={isSaving}
+                onClick={() => saveFullEdit(item.id)}
+              >
+                保存
+              </button>
+              <button type="button" className="am-cancel-btn" onClick={cancelFullEdit}>
+                取消
+              </button>
+            </div>
+          </div>
+        </li>
+      )
+    }
+
+    return (
+      <li
+        ref={setNodeRef}
+        style={style}
+        className={`am-item${isDeleteConfirm ? ' am-item-confirming' : ''}${isDraggable ? ' am-item-draggable' : ''}`}
+      >
+        {isDraggable && (
+          <button
+            type="button"
+            className="am-drag-handle"
+            {...attributes}
+            {...listeners}
+            title="拖拽排序"
+          >
+            ⋮⋮
+          </button>
+        )}
+        <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
+        <div className="am-item-text">
+          <p>{item.name}</p>
+          {item.note ? <small>{item.note}</small> : null}
+        </div>
+        {isDeleteConfirm ? (
+          <div className="am-delete-confirm">
+            <span>确认删除？</span>
+            <button
+              type="button"
+              className="am-del-yes"
+              disabled={isSaving}
+              onClick={() => deleteItem(item.id)}
+            >
+              删除
+            </button>
+            <button
+              type="button"
+              className="am-del-no"
+              onClick={() => setDeleteConfirmId(null)}
+            >
+              取消
+            </button>
+          </div>
+        ) : isEditingAmt ? (
+          <input
+            className="am-amount-input"
+            value={editingAmount}
+            autoFocus
+            onChange={(e) => setEditingAmount(e.target.value)}
+            onBlur={() => saveAmountEdit(item.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveAmountEdit(item.id)
+              }
+              if (e.key === 'Escape') {
+                setEditingAmountId(null)
+                setEditingAmount('')
+              }
+            }}
+          />
+        ) : (
+          <div className="am-item-right">
+            <div className="am-item-hover-actions">
+              <button
+                type="button"
+                className="am-item-action-btn"
+                title="编辑"
+                onClick={() => startFullEdit(item)}
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                className="am-item-action-btn am-item-action-btn-del"
+                title="删除"
+                onClick={() => setDeleteConfirmId(item.id)}
+              >
+                ✕
+              </button>
+            </div>
+            <button
+              type="button"
+              className={`am-amount-btn${item.amount < 0 ? ' am-item-amount-negative' : ''}`}
+              onClick={() => startAmountEdit(item)}
+              title="点击快速编辑金额"
+            >
+              {formatAmount(item.amount)}
+            </button>
+          </div>
+        )}
+      </li>
+    )
+  }
+
   async function loadAssets() {
     setIsLoading(true)
     setLoadError('')
@@ -141,6 +352,61 @@ export function AssetManagerPage() {
   useEffect(() => {
     void loadAssets()
   }, [])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  function handleDragEnd(event: DragEndEvent, groupId: string) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setGroups((currentGroups) => {
+      const targetGroup = currentGroups.find((g) => g.id === groupId)
+      if (!targetGroup) return currentGroups
+
+      const oldIndex = targetGroup.items.findIndex((item) => item.id === active.id)
+      const newIndex = targetGroup.items.findIndex((item) => item.id === over.id)
+
+      if (oldIndex === -1 || newIndex === -1) return currentGroups
+
+      const reorderedItems = arrayMove(targetGroup.items, oldIndex, newIndex)
+      const nextGroups = currentGroups.map((g) =>
+        g.id === groupId ? { ...g, items: reorderedItems } : g,
+      )
+
+      void persistGroups(nextGroups)
+      return nextGroups
+    })
+
+    // Switch to manual mode after drag
+    setSortModeMap((prev) => ({ ...prev, [groupId]: 'manual' }))
+  }
+
+  function toggleSortMode(groupId: string) {
+    setSortModeMap((prev) => {
+      const current = prev[groupId] || 'manual'
+      const next: SortMode = current === 'manual' ? 'amount-desc' : current === 'amount-desc' ? 'amount-asc' : 'manual'
+      return { ...prev, [groupId]: next }
+    })
+  }
+
+  function getSortedItems(items: AccountItem[], sortMode: SortMode): AccountItem[] {
+    if (sortMode === 'amount-asc') {
+      return [...items].sort((a, b) => a.amount - b.amount)
+    }
+    if (sortMode === 'amount-desc') {
+      return [...items].sort((a, b) => b.amount - a.amount)
+    }
+    return items
+  }
 
   async function persistGroups(nextGroups: AccountGroup[]) {
     setIsSaving(true)
@@ -294,169 +560,23 @@ export function AssetManagerPage() {
     void persistGroups(nextGroups)
   }
 
-  function renderItem(item: AccountItem) {
-    const isEditingFull = editingFullItemId === item.id
-    const isEditingAmt = editingAmountId === item.id
-    const isDeleteConfirm = deleteConfirmId === item.id
-
-    if (isEditingFull && editItemDraft) {
-      return (
-        <li key={item.id} className="am-item am-item-edit">
-          <span className={`am-item-icon am-item-icon-${editItemDraft.tone}`}>
-            {editItemDraft.icon || '◎'}
-          </span>
-          <div className="am-item-edit-form">
-            <div className="am-item-edit-top">
-              <input
-                className="am-icon-input"
-                value={editItemDraft.icon}
-                placeholder="◎"
-                title="图标字符"
-                onChange={(e) => setEditItemDraft((p) => (p ? { ...p, icon: e.target.value } : p))}
-              />
-              <div className="am-tone-picker am-tone-picker-sm">
-                {(['blue', 'red', 'gold', 'purple'] as const).map((tone) => (
-                  <button
-                    key={tone}
-                    type="button"
-                    className={`am-tone-btn am-tone-btn-${tone}${editItemDraft.tone === tone ? ' selected' : ''}`}
-                    onClick={() => setEditItemDraft((p) => (p ? { ...p, tone } : p))}
-                    title={TONE_LABELS[tone]}
-                  />
-                ))}
-              </div>
-            </div>
-            <input
-              className="am-field-input"
-              autoFocus
-              placeholder="名称"
-              value={editItemDraft.name}
-              onChange={(e) => setEditItemDraft((p) => (p ? { ...p, name: e.target.value } : p))}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') cancelFullEdit()
-              }}
-            />
-            <input
-              className="am-field-input"
-              placeholder="备注（可选）"
-              value={editItemDraft.note}
-              onChange={(e) => setEditItemDraft((p) => (p ? { ...p, note: e.target.value } : p))}
-            />
-            <input
-              className="am-field-input"
-              placeholder="金额（负债填负数）"
-              value={editItemDraft.amount}
-              onChange={(e) =>
-                setEditItemDraft((p) => (p ? { ...p, amount: e.target.value } : p))
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  saveFullEdit(item.id)
-                }
-                if (e.key === 'Escape') cancelFullEdit()
-              }}
-            />
-            <div className="am-item-edit-btns">
-              <button
-                type="button"
-                className="am-save-btn"
-                disabled={isSaving}
-                onClick={() => saveFullEdit(item.id)}
-              >
-                保存
-              </button>
-              <button type="button" className="am-cancel-btn" onClick={cancelFullEdit}>
-                取消
-              </button>
-            </div>
-          </div>
-        </li>
-      )
-    }
-
-    return (
-      <li key={item.id} className={`am-item${isDeleteConfirm ? ' am-item-confirming' : ''}`}>
-        <span className={`am-item-icon am-item-icon-${item.tone}`}>{item.icon}</span>
-        <div className="am-item-text">
-          <p>{item.name}</p>
-          {item.note ? <small>{item.note}</small> : null}
-        </div>
-        {isDeleteConfirm ? (
-          <div className="am-delete-confirm">
-            <span>确认删除？</span>
-            <button
-              type="button"
-              className="am-del-yes"
-              disabled={isSaving}
-              onClick={() => deleteItem(item.id)}
-            >
-              删除
-            </button>
-            <button
-              type="button"
-              className="am-del-no"
-              onClick={() => setDeleteConfirmId(null)}
-            >
-              取消
-            </button>
-          </div>
-        ) : isEditingAmt ? (
-          <input
-            className="am-amount-input"
-            value={editingAmount}
-            autoFocus
-            onChange={(e) => setEditingAmount(e.target.value)}
-            onBlur={() => saveAmountEdit(item.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                saveAmountEdit(item.id)
-              }
-              if (e.key === 'Escape') {
-                setEditingAmountId(null)
-                setEditingAmount('')
-              }
-            }}
-          />
-        ) : (
-          <div className="am-item-right">
-            <div className="am-item-hover-actions">
-              <button
-                type="button"
-                className="am-item-action-btn"
-                title="编辑"
-                onClick={() => startFullEdit(item)}
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                className="am-item-action-btn am-item-action-btn-del"
-                title="删除"
-                onClick={() => setDeleteConfirmId(item.id)}
-              >
-                ✕
-              </button>
-            </div>
-            <button
-              type="button"
-              className={`am-amount-btn${item.amount < 0 ? ' am-item-amount-negative' : ''}`}
-              onClick={() => startAmountEdit(item)}
-              title="点击快速编辑金额"
-            >
-              {formatAmount(item.amount)}
-            </button>
-          </div>
-        )}
-      </li>
-    )
-  }
-
   function renderGroupSection(
     group: { id: string; title: string; count: number; items: AccountItem[]; total: number },
     keyPrefix: string,
   ) {
+    const sortMode = sortModeMap[group.id] || 'manual'
+    const sortedItems = getSortedItems(group.items, sortMode)
+    const isDraggable = sortMode === 'manual'
+
+    const sortIcon =
+      sortMode === 'amount-desc' ? '↓' : sortMode === 'amount-asc' ? '↑' : '⋮⋮'
+    const sortTitle =
+      sortMode === 'amount-desc'
+        ? '当前: 金额降序'
+        : sortMode === 'amount-asc'
+          ? '当前: 金额升序'
+          : '当前: 手动排序'
+
     return (
       <section key={`${keyPrefix}-${group.id}`} className="am-group">
         <header className="am-group-header">
@@ -471,10 +591,32 @@ export function AssetManagerPage() {
             <span className="am-group-name">{group.title}</span>
             <small className="am-group-count">{group.items.length}</small>
           </button>
-          <span className="am-group-total">{formatAmount(group.total)}</span>
+          <div className="am-group-header-right">
+            <button
+              type="button"
+              className="am-sort-btn"
+              onClick={() => toggleSortMode(group.id)}
+              title={sortTitle}
+            >
+              {sortIcon}
+            </button>
+            <span className="am-group-total">{formatAmount(group.total)}</span>
+          </div>
         </header>
         {!collapsedMap[group.id] && (
-          <ul className="am-items">{group.items.map((item) => renderItem(item))}</ul>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => handleDragEnd(event, group.id)}
+          >
+            <SortableContext items={sortedItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              <ul className="am-items">
+                {sortedItems.map((item) => (
+                  <SortableItem key={item.id} item={item} isDraggable={isDraggable} />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
       </section>
     )

@@ -1821,6 +1821,15 @@ button:focus-visible {
   padding: 6px 0;
 }
 
+.am-item-draggable {
+  grid-template-columns: 20px 32px 1fr auto;
+  cursor: grab;
+}
+
+.am-item-draggable:active {
+  cursor: grabbing;
+}
+
 .am-item-selectable {
   grid-template-columns: 20px 32px 1fr auto;
 }
@@ -2350,6 +2359,62 @@ button:focus-visible {
 .am-item-edit-btns {
   display: flex;
   gap: 6px;
+}
+
+/* Drag handle */
+.am-drag-handle {
+  width: 20px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1;
+  cursor: grab;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+  font-family: inherit;
+}
+
+.am-drag-handle:hover {
+  color: #94a3b8;
+}
+
+.am-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Sort button in group header */
+.am-group-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.am-sort-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  font-family: inherit;
+}
+
+.am-sort-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
 @media (max-width: 768px) {
