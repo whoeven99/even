@@ -14,6 +14,7 @@ const {
 } = require('./billAiParse')
 const { getAssets, updateAssets } = require('./assetStore')
 const { getTodos, createTodo, updateTodo, deleteTodo, reorderTodos } = require('./todoStore')
+const { getSubscriptions, updateSubscriptions } = require('./subscriptionStore')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -295,6 +296,31 @@ api.delete('/todos/:todoId', async (req, res) => {
     res.status(400).json({
       ok: false,
       message: error instanceof Error ? error.message : '待办删除失败',
+    })
+  }
+})
+
+api.get('/subscriptions', async (_req, res) => {
+  try {
+    const data = await getSubscriptions()
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '订阅读取失败',
+    })
+  }
+})
+
+api.put('/subscriptions', async (req, res) => {
+  const items = req.body?.items
+  try {
+    const data = await updateSubscriptions(items)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      message: error instanceof Error ? error.message : '订阅更新失败',
     })
   }
 })
