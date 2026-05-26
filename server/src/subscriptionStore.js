@@ -42,6 +42,7 @@ function sanitizeSubscription(item) {
   const cycle = ['monthly', 'yearly'].includes(String(item?.cycle || 'monthly'))
     ? String(item.cycle)
     : 'monthly'
+  const category = String(item?.category || '').trim() || '数字服务'
   if (!id) throw new Error('订阅项缺少 id')
   if (!name) throw new Error('订阅项缺少 name')
   if (!Number.isFinite(amount) || amount < 0) throw new Error(`订阅金额无效: ${id}`)
@@ -50,6 +51,7 @@ function sanitizeSubscription(item) {
     name,
     amount,
     cycle,
+    category,
     note: item?.note ? String(item.note).trim() : undefined,
   }
 }

@@ -806,37 +806,105 @@ button:focus-visible {
   color: #94a3b8;
 }
 
-.subs-list {
-  list-style: none;
+.subs-empty {
   margin: 0;
-  padding: 0;
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 4px 0;
+}
+
+/* --- Groups --- */
+
+.subs-groups {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.subs-empty {
-  font-size: 13px;
-  color: #94a3b8;
-  padding: 4px 0;
+.subs-group {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
 }
+
+.subs-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.subs-group-header:hover {
+  background: #f1f5f9;
+}
+
+.subs-group-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.subs-group-label {
+  font-weight: 600;
+  flex: 1;
+  color: #0f172a;
+}
+
+.subs-group-subtotal {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.subs-group-chevron {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-left: 2px;
+}
+
+.subs-group-items {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* --- Items --- */
 
 .subs-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
   font-size: 13px;
+  border: 1px solid transparent;
+  transition: background 0.12s;
+}
+
+.subs-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 .subs-item-editing {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  padding: 8px;
 }
 
 .subs-item-main {
@@ -863,7 +931,7 @@ button:focus-visible {
 .subs-item-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
@@ -875,7 +943,7 @@ button:focus-visible {
 
 .subs-cycle-badge {
   font-size: 11px;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 99px;
   font-weight: 500;
 }
@@ -895,24 +963,40 @@ button:focus-visible {
   border: none;
   cursor: pointer;
   font-size: 13px;
-  color: #94a3b8;
+  color: #cbd5e1;
   padding: 2px 4px;
   border-radius: 4px;
   line-height: 1;
   transition: color 0.15s, background 0.15s;
 }
 
+.subs-item:hover .subs-icon-btn {
+  color: #94a3b8;
+}
+
 .subs-icon-btn:hover {
-  color: #475569;
+  color: #475569 !important;
   background: #f1f5f9;
 }
 
 .subs-icon-btn-del:hover {
-  color: #b91c1c;
+  color: #b91c1c !important;
   background: #fee2e2;
 }
 
-.subs-row {
+/* --- Form --- */
+
+.subs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.subs-form-row {
   display: flex;
   gap: 6px;
 }
@@ -926,6 +1010,7 @@ button:focus-visible {
   color: #0f172a;
   background: #fff;
   outline: none;
+  min-width: 0;
 }
 
 .subs-input:focus {
@@ -933,12 +1018,16 @@ button:focus-visible {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
 }
 
-.subs-amount-input {
+.subs-input-name {
+  flex: 1;
+}
+
+.subs-input-amount {
   width: 90px;
   flex-shrink: 0;
 }
 
-.subs-note-input {
+.subs-input-note {
   font-size: 12px;
 }
 
@@ -954,13 +1043,17 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
+.subs-select-cat {
+  flex: 1;
+  min-width: 0;
+}
+
 .subs-select:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
 }
 
-.subs-edit-btns,
-.subs-add-btns {
+.subs-form-btns {
   display: flex;
   gap: 6px;
 }
@@ -971,35 +1064,25 @@ button:focus-visible {
   font-size: 12px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #475569;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .subs-btn:hover {
-  background: #f1f5f9;
+  background: #e2e8f0;
 }
 
-.subs-btn-save {
+.subs-btn-primary {
   background: #6366f1;
   color: #fff;
   border-color: #6366f1;
 }
 
-.subs-btn-save:hover {
+.subs-btn-primary:hover {
   background: #4f46e5;
   border-color: #4f46e5;
-}
-
-.subs-add-form {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
 }
 
 .subs-add-trigger {
