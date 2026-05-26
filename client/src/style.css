@@ -741,26 +741,263 @@ button:focus-visible {
   height: 140px;
 }
 
-.home-ai-panel {
+.home-subscription-panel {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* ── Subscription Panel ──────────────────────────────── */
+
+.sub-panel {
   display: flex;
   flex-direction: column;
-  padding: 12px;
-}
-
-.home-ai-panel .chat-panel {
+  gap: 0;
   height: 100%;
-  min-height: 0;
-  flex: 1;
-  margin-top: 0;
 }
 
-.home-ai-panel .chat-messages {
+.sub-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex-shrink: 0;
+}
+
+.sub-panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sub-add-btn {
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 8px;
+  min-height: 28px;
+  line-height: 1;
+}
+
+.sub-summary {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.sub-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   flex: 1;
-  min-height: 0;
-  max-height: none;
+}
+
+.sub-summary-label {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sub-summary-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e40af;
+  letter-spacing: -0.01em;
+}
+
+.sub-summary-divider {
+  width: 1px;
+  height: 32px;
+  background: #cbd5e1;
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+
+.sub-add-form,
+.sub-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 14px;
+  background: #f8fbff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.sub-add-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.sub-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 13px;
+  background: #fff;
+  color: #0f172a;
+}
+
+.sub-amount-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-note-input {
+  font-size: 12px;
+  color: #475569;
+}
+
+.sub-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 7px 6px;
+  font-size: 12px;
+  background: #fff;
+  color: #0f172a;
+  flex-shrink: 0;
+}
+
+.sub-edit-btns {
+  display: flex;
+  gap: 7px;
+}
+
+.sub-edit-btns button {
+  font-size: 12px;
+  padding: 5px 12px;
+  min-height: 28px;
+}
+
+.sub-error {
+  margin: 8px 14px;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.sub-loading,
+.sub-empty {
+  margin: 16px 14px;
+  font-size: 13px;
+}
+
+.sub-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 16px;
+}
+
+.sub-item {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.12s ease;
+}
+
+.sub-item:hover {
+  background: #f8fbff;
+}
+
+.sub-item-inactive {
+  opacity: 0.5;
+}
+
+.sub-item-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 14px;
+}
+
+.sub-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sub-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.sub-item-note {
+  font-size: 11px;
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+
+.sub-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sub-item-amount {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.sub-cycle-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
+.sub-cycle-monthly {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.sub-cycle-yearly {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sub-item-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.sub-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  min-height: 24px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.sub-btn-danger {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+  border-color: #ef4444;
+}
+
+.sub-btn-danger:hover:not(:disabled) {
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
 }
 
 

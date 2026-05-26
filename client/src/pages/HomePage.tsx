@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AiChatBox } from '../components/AiChatBox'
+import { SubscriptionPanel } from '../components/SubscriptionPanel'
 import { requestWithFetch } from '../services/http'
 
 type WeatherDay = {
@@ -709,8 +709,8 @@ export function HomePage() {
           ) : null}
         </div>
 
-        <div className="home-ai-panel">
-          <AiChatBox />
+        <div className="home-subscription-panel">
+          <SubscriptionPanel />
         </div>
       </aside>
     </div>
