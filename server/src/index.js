@@ -15,6 +15,8 @@ const {
 const { getAssets, updateAssets } = require('./assetStore')
 const { getTodos, createTodo, updateTodo, deleteTodo, reorderTodos } = require('./todoStore')
 const { getSubscriptions, updateSubscriptions } = require('./subscriptionStore')
+const { getNotes, createNote, updateNote, deleteNote } = require('./notesStore')
+const { aiSearchNotes } = require('./notesAiSearch')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -322,6 +324,67 @@ api.put('/subscriptions', async (req, res) => {
       ok: false,
       message: error instanceof Error ? error.message : '订阅更新失败',
     })
+  }
+})
+
+api.get('/notes', async (_req, res) => {
+  try {
+    const data = await getNotes()
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(500).json({ ok: false, message: error instanceof Error ? error.message : '笔记读取失败' })
+  }
+})
+
+api.post('/notes/ai-search', async (req, res) => {
+  const query = String(req.body?.query || '').trim()
+  if (!query) {
+    res.status(400).json({ ok: false, message: 'query 为必填字符串' })
+    return
+  }
+  try {
+    const { notes } = await getNotes()
+    const result = await aiSearchNotes(notes, query)
+    res.json({ ok: true, results: result.results || [] })
+  } catch (error) {
+    res.status(500).json({ ok: false, message: error instanceof Error ? error.message : 'AI 搜索失败' })
+  }
+})
+
+api.post('/notes', async (req, res) => {
+  try {
+    const data = await createNote(req.body)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '笔记新增失败' })
+  }
+})
+
+api.put('/notes/:noteId', async (req, res) => {
+  const noteId = String(req.params?.noteId || '').trim()
+  if (!noteId) {
+    res.status(400).json({ ok: false, message: 'noteId 为必填字符串' })
+    return
+  }
+  try {
+    const data = await updateNote(noteId, req.body)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '笔记更新失败' })
+  }
+})
+
+api.delete('/notes/:noteId', async (req, res) => {
+  const noteId = String(req.params?.noteId || '').trim()
+  if (!noteId) {
+    res.status(400).json({ ok: false, message: 'noteId 为必填字符串' })
+    return
+  }
+  try {
+    const data = await deleteNote(noteId)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '笔记删除失败' })
   }
 })
 

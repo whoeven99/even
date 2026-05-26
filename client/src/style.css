@@ -632,6 +632,461 @@ button:focus-visible {
   border-radius: 18px;
 }
 
+/* ── Notes / Diary Page ──────────────────────────────── */
+
+.app-main--notes {
+  padding: 0;
+  overflow: hidden;
+}
+
+.diary-page {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100%;
+  min-height: 0;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid #dbe4ef;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.diary-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.diary-sidebar-top {
+  padding: 14px 12px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.diary-search-wrap {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.diary-search-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+}
+
+.diary-search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+.diary-search-go {
+  padding: 6px 10px;
+  border: 1px solid #6366f1;
+  border-radius: 8px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.diary-search-go:hover { background: #4f46e5; }
+.diary-search-go:disabled { opacity: 0.5; cursor: default; }
+
+.diary-search-clear {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.diary-search-clear:hover { color: #475569; }
+
+.diary-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diary-mode-tabs {
+  display: flex;
+  background: #e2e8f0;
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.diary-mode-tab {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: #64748b;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.diary-mode-tab.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.diary-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.diary-ai-error {
+  margin: 0;
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+.diary-ai-status {
+  margin: 0;
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+/* List */
+.diary-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.diary-muted {
+  margin: 8px 6px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.diary-list-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 9px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.diary-list-item:hover {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+
+.diary-list-item.active {
+  background: #fff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 1px #6366f1 inset;
+}
+
+.diary-list-item.ai-matched {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+}
+
+.diary-list-item.ai-matched.active {
+  border-color: #6366f1;
+}
+
+.diary-item-preview {
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.diary-item-reason {
+  font-size: 11px;
+  color: #7c3aed;
+  background: #ede9fe;
+  border-radius: 4px;
+  padding: 1px 5px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diary-item-date {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* New button */
+.diary-new-btn {
+  flex-shrink: 0;
+  margin: 8px;
+  padding: 9px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+  background: none;
+  font-size: 13px;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.diary-new-btn:hover {
+  background: #fff;
+  color: #0f172a;
+  border-color: #6366f1;
+}
+
+/* Right panel */
+.diary-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Placeholder */
+.diary-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.diary-placeholder-icon {
+  font-size: 40px;
+  opacity: 0.4;
+}
+
+.diary-placeholder-sub {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Editor */
+.diary-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 20px 24px;
+  gap: 12px;
+}
+
+.diary-editor-title {
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 0;
+  color: #0f172a;
+  background: none;
+  outline: none;
+  width: 100%;
+}
+
+.diary-editor-title::placeholder { color: #cbd5e1; }
+
+.diary-editor-body {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #0f172a;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'SF Mono', ui-monospace, monospace;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.diary-editor-body:focus {
+  border-color: #6366f1;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.08);
+}
+
+.diary-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.diary-editor-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.diary-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Viewer */
+.diary-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 24px;
+  gap: 16px;
+}
+
+.diary-viewer-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 14px;
+}
+
+.diary-viewer-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.diary-viewer-title--empty {
+  color: #94a3b8;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.diary-viewer-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.diary-viewer-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1e293b;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  background: #fafafa;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.diary-viewer-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.diary-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diary-delete-confirm-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Shared buttons */
+.diary-btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.diary-btn:hover { background: #e2e8f0; }
+.diary-btn:disabled { opacity: 0.5; cursor: default; }
+
+.diary-btn-primary {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+}
+
+.diary-btn-primary:hover { background: #4f46e5; border-color: #4f46e5; }
+
+.diary-btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.diary-btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+
+.diary-btn-ghost-danger {
+  background: none;
+  border-color: transparent;
+  color: #94a3b8;
+}
+
+.diary-btn-ghost-danger:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.diary-error {
+  margin: 0;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+
+
 .home-fullscreen {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
