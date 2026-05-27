@@ -3,7 +3,7 @@ const { BlobServiceClient } = require('@azure/storage-blob')
 const { CosmosClient } = require('@azure/cosmos')
 const { parse } = require('csv-parse/sync')
 
-const CATEGORIES = ['餐饮', '购物', '日用', '住房', '汽车', '高速', '娱乐', '其他']
+const CATEGORIES = ['住房', '汽车', '数字服务', '还款', '其他']
 const STAGE_TTL_MS = 30 * 60 * 1000
 const AZURE_STAGE_PREFIX = 'bill-stages'
 
@@ -162,7 +162,9 @@ function getColumnIndex(headers, aliases) {
 
 function classifyTransaction(row) {
   const blob = `${row.counterparty}${row.product}${row.type}${row.remark || ''}`
-  if (/高速|ETC|路桥|通行费|收费站|粤通|苏通|浙通|通行宝/i.test(blob)) return '高速'
+  if (/房租|物业|水电|电费|水费|燃气|宽带|供暖|宿舍|链家|自如|贝壳|小区|高速|ETC|路桥|通行费|收费站|粤通|苏通|浙通|通行宝/i.test(blob)) {
+    return '住房'
+  }
   if (
     /加油|石化|石油|壳牌|充电|停车|洗车|车险|4S|车管所|保养|维修|轮胎|代驾|滴滴.*车|曹操出行|高德打车|嘀嗒|哈啰.*车/i.test(
       blob,
@@ -170,24 +172,11 @@ function classifyTransaction(row) {
   ) {
     return '汽车'
   }
-  if (/房租|物业|水电|电费|水费|燃气|宽带|供暖|宿舍|链家|自如|贝壳|小区/i.test(blob)) {
-    return '住房'
+  if (/爱奇艺|优酷|腾讯.*会员|网易云|视频会员|B站|哔哩|Steam|阿里云|AWS|Azure|云服务|SaaS|订阅|会员|流媒体|软件|在线|数字|网络|云|云盘/i.test(blob)) {
+    return '数字服务'
   }
-  if (/淘宝|天猫|京东|拼多多|唯品会|苏宁|得物|闲鱼|购物|旗舰店|商城|严选/i.test(blob)) {
-    return '购物'
-  }
-  if (/电影|游戏|爱奇艺|优酷|腾讯.*会员|网易云|KTV|票务|娱乐|视频会员|B站|哔哩|Steam|网咖/i.test(blob)) {
-    return '娱乐'
-  }
-  if (
-    /美团|饿了么|外卖|餐厅|咖啡|奶茶|肯德基|麦当劳|星巴克|火锅|小吃|食堂|饭店|饮品|食品|生鲜|盒马|叮咚|朴朴|喜茶|奈雪|瑞幸|必胜客|海底捞|烧烤|面馆|酒楼|茶餐厅/i.test(
-      blob,
-    )
-  ) {
-    return '餐饮'
-  }
-  if (/全家|罗森|7-?11|711|便利|超市|日用|洗护|杂货|屈臣氏|名创|宜家|无印|DM|大润发|永辉|华润万家|沃尔玛|家乐福/i.test(blob)) {
-    return '日用'
+  if (/还款|还贷|贷款|分期|信用卡|花呗|白条|借呗|微粒贷|借款|利息|本金|还息|结息|罚息/i.test(blob)) {
+    return '还款'
   }
   return '其他'
 }

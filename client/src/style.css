@@ -1179,6 +1179,7 @@ button:focus-visible {
 }
 
 .home-weather-widget {
+  display: none;
   padding: 14px 16px;
   border-bottom: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
