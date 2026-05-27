@@ -27,12 +27,8 @@ type FormState = {
 
 const CATEGORIES = [
   { key: '住房', icon: '🏠' },
-  { key: '水电', icon: '🔌' },
-  { key: '通讯', icon: '📱' },
+  { key: '汽车', icon: '🚗' },
   { key: '数字服务', icon: '💻' },
-  { key: '健康', icon: '🏋️' },
-  { key: '交通', icon: '🚗' },
-  { key: '保险', icon: '🛡️' },
   { key: '还款', icon: '💳' },
   { key: '其他', icon: '📦' },
 ]
