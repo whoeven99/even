@@ -3901,3 +3901,320 @@ a.ov-card:hover {
     gap: 16px;
   }
 }
+
+/* ════════════════════════════════════════════════════════
+   健康中心 Health
+   ════════════════════════════════════════════════════════ */
+.health-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-left: 1px;
+}
+
+.health-delta {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.health-delta.down { color: #047857; }
+.health-delta.up { color: #dc2626; }
+
+.health-bmi-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.health-bmi-low { background: #eff6ff; color: #2563eb; }
+.health-bmi-ok { background: #ecfdf5; color: #047857; }
+.health-bmi-high { background: #fffbeb; color: #b45309; }
+.health-bmi-over { background: #fef2f2; color: #dc2626; }
+
+.health-card {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.health-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.health-metric-tabs,
+.health-mode-tabs {
+  display: inline-flex;
+  padding: 3px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  gap: 2px;
+}
+
+.health-metric-tab {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.health-metric-tab.active {
+  background: #fff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.health-height-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.health-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  min-width: 0;
+}
+
+.health-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+.health-input-sm {
+  width: 72px;
+  padding: 5px 8px;
+  text-align: center;
+}
+
+.health-tip,
+.health-chart-empty {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+/* 趋势图 */
+.health-chart-wrap {
+  margin: 6px 0 16px;
+}
+
+.health-chart {
+  width: 100%;
+  height: 200px;
+}
+
+.health-chart-axis {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.health-chart-label,
+.health-chart-axis-val {
+  fill: #94a3b8;
+  font-size: 11px;
+}
+
+/* 添加行 */
+.health-add-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.health-add-row .health-input {
+  flex: 1;
+  min-width: 110px;
+}
+
+.health-add-btn {
+  padding: 8px 18px;
+  border: 1px solid #2563eb;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.health-add-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 统计条 */
+.health-stat-strip {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.health-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+}
+
+.health-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+}
+
+.health-stat-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 记录列表 */
+.health-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.health-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+}
+
+.health-list-date {
+  flex-shrink: 0;
+  width: 88px;
+  font-size: 13px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.health-list-main {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.health-list-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.health-ex-type {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+}
+
+.health-del {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.health-del:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* 概览页健康卡片 */
+.ov-health-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.ov-health-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 8px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.ov-health-label {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.ov-health-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+}
+
+.ov-health-value small {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.ov-health-hint {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .ov-health-metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .health-stat-strip {
+    flex-direction: column;
+  }
+}

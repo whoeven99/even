@@ -17,6 +17,13 @@ const { getTodos, createTodo, updateTodo, deleteTodo, reorderTodos } = require('
 const { getSubscriptions, updateSubscriptions } = require('./subscriptionStore')
 const { getNotes, createNote, updateNote, deleteNote } = require('./notesStore')
 const { aiSearchNotes } = require('./notesAiSearch')
+const {
+  getHealth,
+  updateProfile,
+  updateBodyMetrics,
+  updateExercises,
+  updateSleeps,
+} = require('./healthStore')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -385,6 +392,51 @@ api.delete('/notes/:noteId', async (req, res) => {
     res.json({ ok: true, ...data })
   } catch (error) {
     res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '笔记删除失败' })
+  }
+})
+
+api.get('/health-tracker', async (_req, res) => {
+  try {
+    const data = await getHealth()
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(500).json({ ok: false, message: error instanceof Error ? error.message : '健康数据读取失败' })
+  }
+})
+
+api.put('/health-tracker/profile', async (req, res) => {
+  try {
+    const data = await updateProfile(req.body || {})
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '身高更新失败' })
+  }
+})
+
+api.put('/health-tracker/body', async (req, res) => {
+  try {
+    const data = await updateBodyMetrics(req.body?.items)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '体征记录更新失败' })
+  }
+})
+
+api.put('/health-tracker/exercise', async (req, res) => {
+  try {
+    const data = await updateExercises(req.body?.items)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '运动记录更新失败' })
+  }
+})
+
+api.put('/health-tracker/sleep', async (req, res) => {
+  try {
+    const data = await updateSleeps(req.body?.items)
+    res.json({ ok: true, ...data })
+  } catch (error) {
+    res.status(400).json({ ok: false, message: error instanceof Error ? error.message : '睡眠记录更新失败' })
   }
 })
 

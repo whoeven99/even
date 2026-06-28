@@ -34,6 +34,13 @@ const {
   createListBillMonthsTool,
   createAnalyzeBillMonthTool,
 } = require('./billTools')
+const {
+  createGetHealthTool,
+  createSetHeightTool,
+  createAddBodyMetricTool,
+  createAddExerciseTool,
+  createAddSleepTool,
+} = require('./healthTools')
 
 module.exports = {
   queryRecentWeatherDays,
@@ -60,4 +67,9 @@ module.exports = {
   createDeleteNoteTool,
   createListBillMonthsTool,
   createAnalyzeBillMonthTool,
+  createGetHealthTool,
+  createSetHeightTool,
+  createAddBodyMetricTool,
+  createAddExerciseTool,
+  createAddSleepTool,
 }

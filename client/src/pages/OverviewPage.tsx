@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { WeatherWidget } from '../components/WeatherWidget'
+import { HealthTrendChart } from '../components/HealthTrendChart'
 import { useFinanceSummary } from '../hooks/useFinanceSummary'
+import { bmiCategory, computeHealthSummary, useHealth } from '../hooks/useHealth'
 import { formatTodoTime, useTodos, type TodoItem } from '../hooks/useTodos'
 
 function useClock() {
@@ -40,6 +41,8 @@ function isOverdue(item: TodoItem): boolean {
 export function OverviewPage() {
   const now = useClock()
   const finance = useFinanceSummary()
+  const health = useHealth()
+  const healthSummary = useMemo(() => computeHealthSummary(health.data), [health.data])
   const { items, loading: todosLoading, saving, createTodo, patchTodo } = useTodos()
   const [quickText, setQuickText] = useState('')
 
@@ -171,10 +174,66 @@ export function OverviewPage() {
           </ul>
         </section>
 
-        {/* 天气 */}
-        <section className="ov-card ov-card-weather">
-          <WeatherWidget />
-        </section>
+        {/* 健康概览（替代原天气栏） */}
+        <Link to="/health" className="ov-card ov-card-health">
+          <div className="ov-card-head">
+            <h3>健康概览</h3>
+            <span className="ov-card-link">进入健康中心 →</span>
+          </div>
+          {health.loading ? (
+            <p className="muted">加载中…</p>
+          ) : health.error ? (
+            <p className="weather-error">{health.error}</p>
+          ) : (
+            <>
+              <div className="ov-health-metrics">
+                <div className="ov-health-cell">
+                  <span className="ov-health-label">体重</span>
+                  <span className="ov-health-value">
+                    {healthSummary.latestWeight != null ? healthSummary.latestWeight.toFixed(1) : '--'}
+                    <small> kg</small>
+                    {healthSummary.weightDelta != null && healthSummary.weightDelta !== 0 && (
+                      <small className={`health-delta ${healthSummary.weightDelta < 0 ? 'down' : 'up'}`}>
+                        {healthSummary.weightDelta < 0 ? '▼' : '▲'}{Math.abs(healthSummary.weightDelta).toFixed(1)}
+                      </small>
+                    )}
+                  </span>
+                </div>
+                <div className="ov-health-cell">
+                  <span className="ov-health-label">BMI</span>
+                  <span className="ov-health-value">
+                    {healthSummary.bmi != null ? healthSummary.bmi.toFixed(1) : '--'}
+                    {(() => {
+                      const cat = bmiCategory(healthSummary.bmi)
+                      return cat ? <small className={`health-bmi-tag health-bmi-${cat.tone}`}>{cat.label}</small> : null
+                    })()}
+                  </span>
+                </div>
+                <div className="ov-health-cell">
+                  <span className="ov-health-label">体脂</span>
+                  <span className="ov-health-value">
+                    {healthSummary.latestBodyFat != null ? healthSummary.latestBodyFat.toFixed(1) : '--'}<small> %</small>
+                  </span>
+                </div>
+                <div className="ov-health-cell">
+                  <span className="ov-health-label">本周运动</span>
+                  <span className="ov-health-value">{healthSummary.exerciseCount7d}<small> 次</small></span>
+                </div>
+                <div className="ov-health-cell">
+                  <span className="ov-health-label">近7天均睡</span>
+                  <span className="ov-health-value">
+                    {healthSummary.avgSleep7d != null ? healthSummary.avgSleep7d.toFixed(1) : '--'}<small> h</small>
+                  </span>
+                </div>
+              </div>
+              {healthSummary.weightSeries.length > 1 ? (
+                <HealthTrendChart points={healthSummary.weightSeries} unit="kg" color="#2563eb" height={140} />
+              ) : (
+                <p className="muted ov-health-hint">记录两次以上体重即可看到趋势图。</p>
+              )}
+            </>
+          )}
+        </Link>
 
         {/* 快捷入口 */}
         <section className="ov-card ov-card-quick">

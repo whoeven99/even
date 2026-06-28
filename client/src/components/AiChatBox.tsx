@@ -32,12 +32,14 @@ export function AiChatBox() {
         '🧾 **账单分析**\n' +
         '- 我上个月在「餐饮」上花了多少？\n' +
         '- 分析一下最近一期账单消费\n\n' +
+        '🏃 **健康**\n' +
+        '- 记一下今天体重 70.5kg、体脂 18%\n' +
+        '- 我这周运动了几次？\n\n' +
         '📝 **待办 / 备忘**\n' +
         '- 添加待办：明天交周报\n' +
         '- 我之前记过 Wi-Fi 密码吗？（语义搜索备忘录）\n\n' +
         '🌤️ **天气**\n' +
-        '- 我这里现在天气怎么样\n' +
-        '- 上海未来 3 天天气',
+        '- 我这里现在天气怎么样',
     },
   ])
 
@@ -96,7 +98,7 @@ export function AiChatBox() {
   return (
     <div className="chat-panel">
       <div className="chat-meta muted">
-        已连接 LangChain Agent（Tools: 资产 · 固定支出 · 账单分析 · 待办 · 备忘录 · 天气）
+        已连接 LangChain Agent（Tools: 资产 · 固定支出 · 账单分析 · 健康 · 待办 · 备忘录 · 天气）
       </div>
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.map((message, index) => (

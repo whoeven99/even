@@ -23,6 +23,11 @@ const {
   createDeleteNoteTool,
   createListBillMonthsTool,
   createAnalyzeBillMonthTool,
+  createGetHealthTool,
+  createSetHeightTool,
+  createAddBodyMetricTool,
+  createAddExerciseTool,
+  createAddSleepTool,
 } = require('./tools')
 
 let runtimePromise = null
@@ -72,6 +77,12 @@ async function createRuntime() {
   // 微信账单
   const listBillMonthsTool = createListBillMonthsTool(DynamicStructuredTool)
   const analyzeBillMonthTool = createAnalyzeBillMonthTool(DynamicStructuredTool)
+  // 健康
+  const getHealthTool = createGetHealthTool(DynamicStructuredTool)
+  const setHeightTool = createSetHeightTool(DynamicStructuredTool)
+  const addBodyMetricTool = createAddBodyMetricTool(DynamicStructuredTool)
+  const addExerciseTool = createAddExerciseTool(DynamicStructuredTool)
+  const addSleepTool = createAddSleepTool(DynamicStructuredTool)
 
   const { apiKey, model, baseURL } = getModelConfig()
   const llm = new ChatOpenAI({
@@ -107,6 +118,11 @@ async function createRuntime() {
       deleteNoteTool,
       listBillMonthsTool,
       analyzeBillMonthTool,
+      getHealthTool,
+      setHeightTool,
+      addBodyMetricTool,
+      addExerciseTool,
+      addSleepTool,
     ],
     systemPrompt:
       '你是 SkyBoard 个人仪表盘的智能助理，是一个可以调用工具的 Agent。' +
@@ -117,7 +133,8 @@ async function createRuntime() {
       '- 资产负债（净资产分析）：get_assets / add_asset / update_asset / delete_asset。负债用负数金额。\n' +
       '- 固定支出（订阅账单）：get_subscriptions / add_subscription / update_subscription / delete_subscription。\n' +
       '- 备忘录：list_notes / get_note / search_notes（语义搜索）/ add_note / update_note / delete_note。\n' +
-      '- 微信账单分析：先 list_bill_months 拿 stageId，再 analyze_bill_month 分析某月消费。\n\n' +
+      '- 微信账单分析：先 list_bill_months 拿 stageId，再 analyze_bill_month 分析某月消费。\n' +
+      '- 健康（体重/体脂/BMI/运动/睡眠）：get_health 读取概览；set_height 设身高；add_body_metric 记体重体脂；add_exercise 记运动；add_sleep 记睡眠。\n\n' +
       '工作原则：\n' +
       '1) 任何涉及真实数据的问答，必须先调用对应的读取工具获取最新数据，再基于结果回答，不要凭空编造。\n' +
       '2) 需要修改/新增/删除时，先用读取工具确认目标与 id，再调用写入工具；删除等不可逆操作前先向用户确认。\n' +

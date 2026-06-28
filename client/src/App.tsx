@@ -191,6 +191,7 @@ export function App() {
             </NavLink>
             <NavLink to="/finance">财务中心</NavLink>
             <NavLink to="/workspace">工作台</NavLink>
+            <NavLink to="/health">健康</NavLink>
             <NavLink to="/assistant">AI 助手</NavLink>
           </nav>
         </header>
