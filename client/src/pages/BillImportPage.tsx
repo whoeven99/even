@@ -110,7 +110,7 @@ async function parseJsonSafe<T>(response: Response): Promise<T | null> {
   }
 }
 
-export function BillImportPage() {
+export function BillImportPage({ embedded = false }: { embedded?: boolean }) {
   const cachedStages = sortStagesByMonthDesc(readCachedBillStages<BillStageListItem>())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -233,18 +233,20 @@ export function BillImportPage() {
 
   return (
     <section className="page-shell bill-page">
-      <header className="bill-hero page-hero page-hero-inline">
-        <div>
-          <h2>微信账单导入</h2>
-          <p className="muted">
-            支持微信「账单源文件」导出（CSV 或 Excel）。上传后由服务端使用与 AI
-            对话相同的 DeepSeek 配置解析内容、抽取流水并归类。
-          </p>
-        </div>
-        <div className="bill-hero-tip">
-          <span>支持多月账单，上传后会自动按月份拆分暂存</span>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="bill-hero page-hero page-hero-inline">
+          <div>
+            <h2>微信账单导入</h2>
+            <p className="muted">
+              支持微信「账单源文件」导出（CSV 或 Excel）。上传后由服务端使用与 AI
+              对话相同的 DeepSeek 配置解析内容、抽取流水并归类。
+            </p>
+          </div>
+          <div className="bill-hero-tip">
+            <span>支持多月账单，上传后会自动按月份拆分暂存</span>
+          </div>
+        </header>
+      )}
 
       <div className="bill-control-grid">
         <article className="bill-panel">

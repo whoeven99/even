@@ -57,7 +57,7 @@ const TONE_LABELS: Record<AccountItem['tone'], string> = {
 
 const PRESET_ICONS = ['◎', '★', '🏠', '🚗', '💳', '💼', '📈', '🏦']
 
-export function AssetManagerPage() {
+export function AssetManagerPage({ embedded = false }: { embedded?: boolean }) {
   const [groups, setGroups] = useState<AccountGroup[]>([])
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({})
   const [sortModeMap, setSortModeMap] = useState<Record<string, SortMode>>({})
@@ -627,8 +627,8 @@ export function AssetManagerPage() {
 
   return (
     <section className="page-shell am-page">
-      <header className="am-header page-hero page-hero-inline">
-        <h2>资产管家</h2>
+      <header className={embedded ? 'am-header am-header-embedded' : 'am-header page-hero page-hero-inline'}>
+        {!embedded && <h2>资产管家</h2>}
         <div className="am-header-actions">
           <button
             type="button"

@@ -3415,3 +3415,489 @@ button:focus-visible {
     font-size: 24px;
   }
 }
+
+/* ════════════════════════════════════════════════════════
+   重整后的新版页面：概览 / 财务中心 / 工作台
+   ════════════════════════════════════════════════════════ */
+
+/* ── 概览页 Overview ─────────────────────────────────── */
+.ov-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ov-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 26px;
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  background: linear-gradient(130deg, #eff6ff 0%, #f5f9ff 55%, #faf5ff 100%);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  flex-wrap: wrap;
+}
+
+.ov-hero-eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2563eb;
+}
+
+.ov-hero-greet h2 {
+  margin: 0;
+  font-size: clamp(24px, 3.4vw, 32px);
+  letter-spacing: -0.02em;
+}
+
+.ov-hero-date {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.ov-hero-clock {
+  display: flex;
+  align-items: center;
+}
+
+.ov-clock-time {
+  font-size: clamp(30px, 5vw, 46px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: #1e293b;
+}
+
+.ov-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ov-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+a.ov-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+a.ov-card:hover {
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.12);
+}
+
+.ov-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ov-card-head h3 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.ov-card-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* 财务快照 */
+.ov-net {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ov-net-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.ov-net-value {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.ov-net-value.is-neg {
+  color: #dc2626;
+}
+
+.ov-finance-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.ov-finance-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+}
+
+.ov-finance-cell-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ov-finance-cell-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-pos { color: #047857; }
+.ov-neg { color: #dc2626; }
+
+/* 今日待办 */
+.ov-todo-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.ov-overdue-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.ov-quickadd {
+  display: flex;
+  gap: 8px;
+}
+
+.ov-quickadd .todo-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ov-quickadd button {
+  padding: 8px 16px;
+  border: 1px solid #2563eb;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ov-quickadd button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ov-todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ov-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+}
+
+.ov-todo-item.is-overdue {
+  background: #fff7f7;
+  border-color: #fecaca;
+}
+
+.ov-todo-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ov-todo-check:hover {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+
+.ov-todo-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-todo-pin {
+  margin-right: 4px;
+}
+
+.ov-todo-time {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 天气卡片：复用天气组件，覆盖原 home-weather 的 display:none */
+.weather-widget {
+  display: block;
+}
+
+.ov-card-weather .weather-widget .dash-card-header {
+  margin-bottom: 10px;
+}
+
+/* 快捷入口 */
+.ov-quicklinks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.ov-quicklink {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s ease;
+}
+
+.ov-quicklink:hover {
+  border-color: #bfdbfe;
+  background: #f0f7ff;
+  transform: translateY(-1px);
+}
+
+.ov-quicklink-icon {
+  font-size: 22px;
+}
+
+.ov-quicklink-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ov-quicklink-sub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* ── 财务中心 / 工作台 公共标签布局 Hub ──────────────── */
+.hub-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.app-main--notes .hub-page {
+  height: 100%;
+}
+
+.hub-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(130deg, #eff6ff 0%, #f6faff 60%, #faf5ff 100%);
+  flex-wrap: wrap;
+}
+
+.hub-summary-slim {
+  padding: 14px 20px;
+}
+
+.hub-summary-title .ov-hero-eyebrow {
+  margin-bottom: 4px;
+}
+
+.hub-summary-title h2 {
+  margin: 0;
+  font-size: clamp(20px, 2.6vw, 26px);
+  letter-spacing: -0.01em;
+}
+
+.hub-summary-metrics {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.hub-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hub-metric-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.hub-metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.hub-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hub-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hub-tab:hover {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+}
+
+.hub-tab.active {
+  color: #fff;
+  border-color: #2563eb;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.22);
+}
+
+.hub-tab-icon {
+  font-size: 15px;
+}
+
+.hub-body {
+  min-height: 0;
+}
+
+.hub-body-fill {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 工作台待办：复用首页便利贴看板，外加圆角边框 */
+.workspace-todos {
+  height: 100%;
+  min-height: 0;
+}
+
+.workspace-todos .home-board-area {
+  height: 100%;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* 工作台备忘录：嵌入式占满高度 */
+.hub-body-fill .diary-page {
+  height: 100%;
+}
+
+/* 固定支出标签页容器 */
+.subs-page-wrap {
+  max-width: 640px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+/* 资产管家在财务中心内嵌时的精简头部 */
+.am-header-embedded {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* ── 新版页面响应式 ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .ov-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ov-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ov-finance-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ov-quicklinks {
+    grid-template-columns: 1fr;
+  }
+
+  .hub-summary-metrics {
+    gap: 16px;
+  }
+}

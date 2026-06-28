@@ -187,18 +187,16 @@ export function App() {
           </div>
           <nav className="nav">
             <NavLink to="/" end>
-              首页
+              概览
             </NavLink>
-            <NavLink to="/notes">备忘录</NavLink>
-            <NavLink to="/ai-chat">AI 对话</NavLink>
-            <NavLink to="/bills">微信账单</NavLink>
-            <NavLink to="/asset-manager">资产管家</NavLink>
+            <NavLink to="/finance">财务中心</NavLink>
+            <NavLink to="/workspace">工作台</NavLink>
+            <NavLink to="/assistant">AI 助手</NavLink>
           </nav>
         </header>
         <main className={[
             'app-main',
-            location.pathname === '/' ? 'app-main--home' : '',
-            location.pathname === '/notes' ? 'app-main--notes' : '',
+            location.pathname === '/workspace' ? 'app-main--notes' : '',
           ].filter(Boolean).join(' ')}>
           <Outlet />
         </main>

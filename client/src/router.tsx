@@ -1,21 +1,24 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { App } from './App'
-import { AiChatPage } from './pages/AiChatPage'
-import { AssetManagerPage } from './pages/AssetManagerPage'
-import { BillImportPage } from './pages/BillImportPage'
-import { DiaryPage } from './pages/DiaryPage'
-import { HomePage } from './pages/HomePage'
+import { OverviewPage } from './pages/OverviewPage'
+import { FinancePage } from './pages/FinancePage'
+import { WorkspacePage } from './pages/WorkspacePage'
+import { AssistantPage } from './pages/AssistantPage'
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: 'ai-chat', element: <AiChatPage /> },
-      { path: 'bills', element: <BillImportPage /> },
-      { path: 'asset-manager', element: <AssetManagerPage /> },
-      { path: 'notes', element: <DiaryPage /> },
+      { index: true, element: <OverviewPage /> },
+      { path: 'finance', element: <FinancePage /> },
+      { path: 'workspace', element: <WorkspacePage /> },
+      { path: 'assistant', element: <AssistantPage /> },
+      // 兼容旧路由
+      { path: 'ai-chat', element: <Navigate to="/assistant" replace /> },
+      { path: 'bills', element: <Navigate to="/finance" replace /> },
+      { path: 'asset-manager', element: <Navigate to="/finance" replace /> },
+      { path: 'notes', element: <Navigate to="/workspace" replace /> },
     ],
   },
 ])
