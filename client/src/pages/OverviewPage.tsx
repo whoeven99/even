@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HealthTrendChart } from '../components/HealthTrendChart'
+import { HealthSeriesChart } from '../components/HealthSeriesChart'
 import { useFinanceSummary } from '../hooks/useFinanceSummary'
-import { bmiCategory, computeHealthSummary, useHealth } from '../hooks/useHealth'
+import { bmiCategory, computeBmi, computeHealthSummary, useHealth } from '../hooks/useHealth'
 import { formatTodoTime, useTodos, type TodoItem } from '../hooks/useTodos'
 
 function useClock() {
@@ -48,6 +48,38 @@ export function OverviewPage() {
 
   const greeting = greetingFor(now.getHours())
   const dateLabel = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 · ${WEEKDAYS[now.getDay()]}`
+
+  const healthSeries = useMemo(
+    () => [
+      {
+        key: 'weight',
+        label: '体重',
+        color: '#2563eb',
+        unit: 'kg',
+        points: health.data.bodyMetrics
+          .filter((b) => typeof b.weightKg === 'number')
+          .map((b) => ({ date: b.date, value: b.weightKg as number })),
+      },
+      {
+        key: 'fat',
+        label: '体脂',
+        color: '#d97706',
+        unit: '%',
+        points: health.data.bodyMetrics
+          .filter((b) => typeof b.bodyFatPct === 'number')
+          .map((b) => ({ date: b.date, value: b.bodyFatPct as number })),
+      },
+      {
+        key: 'bmi',
+        label: 'BMI',
+        color: '#7c3aed',
+        points: health.data.bodyMetrics
+          .map((b) => ({ date: b.date, value: computeBmi(b.weightKg, health.data.profile.heightCm) }))
+          .filter((p): p is { date: string; value: number } => p.value != null),
+      },
+    ],
+    [health.data.bodyMetrics, health.data.profile.heightCm],
+  )
   const timeLabel = now.toLocaleTimeString('zh-CN', { hour12: false })
 
   const focusTodos = useMemo(() => {
@@ -227,7 +259,7 @@ export function OverviewPage() {
                 </div>
               </div>
               {healthSummary.weightSeries.length > 1 ? (
-                <HealthTrendChart points={healthSummary.weightSeries} unit="kg" color="#2563eb" height={140} />
+                <HealthSeriesChart series={healthSeries} normalize="independent" height={140} />
               ) : (
                 <p className="muted ov-health-hint">记录两次以上体重即可看到趋势图。</p>
               )}
