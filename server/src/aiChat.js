@@ -7,6 +7,22 @@ const {
   createAddTodoTool,
   createUpdateTodoTool,
   createDeleteTodoTool,
+  createGetAssetsTool,
+  createAddAssetTool,
+  createUpdateAssetTool,
+  createDeleteAssetTool,
+  createGetSubscriptionsTool,
+  createAddSubscriptionTool,
+  createUpdateSubscriptionTool,
+  createDeleteSubscriptionTool,
+  createListNotesTool,
+  createGetNoteTool,
+  createSearchNotesTool,
+  createAddNoteTool,
+  createUpdateNoteTool,
+  createDeleteNoteTool,
+  createListBillMonthsTool,
+  createAnalyzeBillMonthTool,
 } = require('./tools')
 
 let runtimePromise = null
@@ -36,6 +52,27 @@ async function createRuntime() {
   const updateTodoTool = createUpdateTodoTool(DynamicStructuredTool)
   const removeTodoTool = createDeleteTodoTool(DynamicStructuredTool)
 
+  // 资产负债
+  const getAssetsTool = createGetAssetsTool(DynamicStructuredTool)
+  const addAssetTool = createAddAssetTool(DynamicStructuredTool)
+  const updateAssetTool = createUpdateAssetTool(DynamicStructuredTool)
+  const deleteAssetTool = createDeleteAssetTool(DynamicStructuredTool)
+  // 固定支出
+  const getSubsTool = createGetSubscriptionsTool(DynamicStructuredTool)
+  const addSubsTool = createAddSubscriptionTool(DynamicStructuredTool)
+  const updateSubsTool = createUpdateSubscriptionTool(DynamicStructuredTool)
+  const deleteSubsTool = createDeleteSubscriptionTool(DynamicStructuredTool)
+  // 备忘录
+  const listNotesTool = createListNotesTool(DynamicStructuredTool)
+  const getNoteTool = createGetNoteTool(DynamicStructuredTool)
+  const searchNotesTool = createSearchNotesTool(DynamicStructuredTool)
+  const addNoteTool = createAddNoteTool(DynamicStructuredTool)
+  const updateNoteTool = createUpdateNoteTool(DynamicStructuredTool)
+  const deleteNoteTool = createDeleteNoteTool(DynamicStructuredTool)
+  // 微信账单
+  const listBillMonthsTool = createListBillMonthsTool(DynamicStructuredTool)
+  const analyzeBillMonthTool = createAnalyzeBillMonthTool(DynamicStructuredTool)
+
   const { apiKey, model, baseURL } = getModelConfig()
   const llm = new ChatOpenAI({
     apiKey,
@@ -54,17 +91,40 @@ async function createRuntime() {
       addTodoTool,
       updateTodoTool,
       removeTodoTool,
+      getAssetsTool,
+      addAssetTool,
+      updateAssetTool,
+      deleteAssetTool,
+      getSubsTool,
+      addSubsTool,
+      updateSubsTool,
+      deleteSubsTool,
+      listNotesTool,
+      getNoteTool,
+      searchNotesTool,
+      addNoteTool,
+      updateNoteTool,
+      deleteNoteTool,
+      listBillMonthsTool,
+      analyzeBillMonthTool,
     ],
     systemPrompt:
-      '你是一个中文 AI 助手。你可以进行日常问答；如果用户询问天气，必须调用 query_weather_current 或 query_weather_recent 工具后再回答。' +
-      '如果用户问“我这里/我当前”的天气，先调用 query_city_by_ip，再调用天气工具。' +
-      '如果用户要添加、修改、完成、删除或查看待办事项，必须调用对应待办工具后再回答。' +
-      '天气类回复统一使用如下风格：\n' +
-      '1) 第一行写“{城市}现在的天气情况如下：”\n' +
-      '2) 空一行后用 Markdown 列表输出三项：天气状况、气温、湿度（可带合适 emoji）\n' +
-      '3) 最后再给一句简短出行建议，语气自然。\n' +
-      '如果工具返回“暂无天气数据”，请直接礼貌告知并建议用户换一个更完整的城市名。' +
-      '待办类回复请简短确认结果，并在必要时提示用户待办 id 以便后续修改。',
+      '你是 SkyBoard 个人仪表盘的智能助理，是一个可以调用工具的 Agent。' +
+      '仪表盘的所有功能都以工具形式提供给你，你可以读取数据、分析数据，并在用户授意下写入数据。\n\n' +
+      '你能操作的领域与对应工具：\n' +
+      '- 天气：query_weather_current / query_weather_recent；问“我这里/当前”天气时先 query_city_by_ip。\n' +
+      '- 待办：list_todos / add_todo / update_todo / delete_todo。\n' +
+      '- 资产负债（净资产分析）：get_assets / add_asset / update_asset / delete_asset。负债用负数金额。\n' +
+      '- 固定支出（订阅账单）：get_subscriptions / add_subscription / update_subscription / delete_subscription。\n' +
+      '- 备忘录：list_notes / get_note / search_notes（语义搜索）/ add_note / update_note / delete_note。\n' +
+      '- 微信账单分析：先 list_bill_months 拿 stageId，再 analyze_bill_month 分析某月消费。\n\n' +
+      '工作原则：\n' +
+      '1) 任何涉及真实数据的问答，必须先调用对应的读取工具获取最新数据，再基于结果回答，不要凭空编造。\n' +
+      '2) 需要修改/新增/删除时，先用读取工具确认目标与 id，再调用写入工具；删除等不可逆操作前先向用户确认。\n' +
+      '3) 做数据分析时（如“这个月花得多吗”“我的净资产健康吗”），调用相关工具取数后给出有依据的简短结论与建议。\n' +
+      '4) 回复使用简体中文与 Markdown，简洁清晰，可适当使用 emoji。\n\n' +
+      '天气类回复风格：第一行“{城市}现在的天气情况如下：”，空一行后用 Markdown 列表给出天气状况、气温、湿度，最后一句出行建议。' +
+      '若工具返回“暂无天气数据”，礼貌告知并建议换更完整的城市名。',
   })
 
   return { agent }

@@ -74,5 +74,12 @@ export function useFinanceSummary(): FinanceSummary & { reload: () => void } {
 
   useEffect(() => { void load() }, [load])
 
+  // AI 助手写入资产/订阅后会广播该事件，这里据此刷新
+  useEffect(() => {
+    const handler = () => void load()
+    window.addEventListener('dashboard:data-changed', handler)
+    return () => window.removeEventListener('dashboard:data-changed', handler)
+  }, [load])
+
   return { ...summary, reload: load }
 }

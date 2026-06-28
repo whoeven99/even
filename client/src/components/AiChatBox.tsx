@@ -24,16 +24,20 @@ export function AiChatBox() {
     {
       role: 'assistant',
       content:
-        '你好，我可以帮你做两类事：\n\n' +
-        '查天气\n' +
-        '- 深圳今天天气\n' +
-        '- 我这里现在天气怎么样\n' +
-        '- 上海未来 3 天天气\n\n' +
-        '管待办（自动保存）\n' +
+        '你好，我是 SkyBoard 的智能助理。仪表盘的所有功能我都能调用，可以**读取、分析并帮你修改**各页面的数据：\n\n' +
+        '💰 **资产 / 财务**\n' +
+        '- 我现在的净资产是多少？\n' +
+        '- 帮我把「招商银行」余额改成 50000\n' +
+        '- 我每个月的固定支出有多少？\n\n' +
+        '🧾 **账单分析**\n' +
+        '- 我上个月在「餐饮」上花了多少？\n' +
+        '- 分析一下最近一期账单消费\n\n' +
+        '📝 **待办 / 备忘**\n' +
         '- 添加待办：明天交周报\n' +
-        '- 查看我的待办\n' +
-        '- 把“明天交周报”标记完成\n' +
-        '- 删除“明天交周报”',
+        '- 我之前记过 Wi-Fi 密码吗？（语义搜索备忘录）\n\n' +
+        '🌤️ **天气**\n' +
+        '- 我这里现在天气怎么样\n' +
+        '- 上海未来 3 天天气',
     },
   ])
 
@@ -73,7 +77,9 @@ export function AiChatBox() {
 
       const reply = data.reply
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      // 助理可能写入了待办/资产等数据，通知其他页面刷新
       window.dispatchEvent(new CustomEvent('todos:changed'))
+      window.dispatchEvent(new CustomEvent('dashboard:data-changed'))
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -90,7 +96,7 @@ export function AiChatBox() {
   return (
     <div className="chat-panel">
       <div className="chat-meta muted">
-        已连接 LangChain Agent（Tools: 天气、IP 定位、待办管理）
+        已连接 LangChain Agent（Tools: 资产 · 固定支出 · 账单分析 · 待办 · 备忘录 · 天气）
       </div>
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.map((message, index) => (

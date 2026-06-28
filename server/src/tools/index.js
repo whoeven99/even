@@ -10,6 +10,30 @@ const {
   createUpdateTodoTool,
   createDeleteTodoTool,
 } = require('./todoTools')
+const {
+  createGetAssetsTool,
+  createAddAssetTool,
+  createUpdateAssetTool,
+  createDeleteAssetTool,
+} = require('./assetTools')
+const {
+  createGetSubscriptionsTool,
+  createAddSubscriptionTool,
+  createUpdateSubscriptionTool,
+  createDeleteSubscriptionTool,
+} = require('./subscriptionTools')
+const {
+  createListNotesTool,
+  createGetNoteTool,
+  createSearchNotesTool,
+  createAddNoteTool,
+  createUpdateNoteTool,
+  createDeleteNoteTool,
+} = require('./notesTools')
+const {
+  createListBillMonthsTool,
+  createAnalyzeBillMonthTool,
+} = require('./billTools')
 
 module.exports = {
   queryRecentWeatherDays,
@@ -20,4 +44,20 @@ module.exports = {
   createAddTodoTool,
   createUpdateTodoTool,
   createDeleteTodoTool,
+  createGetAssetsTool,
+  createAddAssetTool,
+  createUpdateAssetTool,
+  createDeleteAssetTool,
+  createGetSubscriptionsTool,
+  createAddSubscriptionTool,
+  createUpdateSubscriptionTool,
+  createDeleteSubscriptionTool,
+  createListNotesTool,
+  createGetNoteTool,
+  createSearchNotesTool,
+  createAddNoteTool,
+  createUpdateNoteTool,
+  createDeleteNoteTool,
+  createListBillMonthsTool,
+  createAnalyzeBillMonthTool,
 }
