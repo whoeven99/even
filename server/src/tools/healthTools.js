@@ -119,17 +119,30 @@ function createAddExerciseTool(T) {
 function createAddSleepTool(T) {
   return new T({
     name: 'add_sleep',
-    description: '记录一次睡眠时长。日期默认今天。',
+    description: '记录一次睡眠。优先填写入睡时间 bedtime 与起床时间 waketime（HH:MM），时长会自动计算；也可只给 hours。日期默认今天。',
     schema: z.object({
-      hours: z.number().describe('睡眠小时数'),
+      bedtime: z.string().optional().describe('入睡时间 HH:MM，如 23:30'),
+      waketime: z.string().optional().describe('起床时间 HH:MM，如 07:00'),
+      hours: z.number().optional().describe('睡眠小时数（在未提供起止时间时使用）'),
       date: z.string().optional().describe('日期 YYYY-MM-DD，默认今天'),
       note: z.string().optional(),
     }),
-    func: async ({ hours, date, note }) => {
+    func: async ({ bedtime, waketime, hours, date, note }) => {
+      if ((!bedtime || !waketime) && hours == null) {
+        return '请提供入睡时间与起床时间（bedtime/waketime），或直接给出 hours。'
+      }
       const { sleeps } = await getHealth()
-      const item = { id: genId('sl'), date: date || today(), hours, note: note || undefined }
+      const item = {
+        id: genId('sl'),
+        date: date || today(),
+        bedtime: bedtime || '',
+        waketime: waketime || '',
+        hours: typeof hours === 'number' ? hours : undefined,
+        note: note || undefined,
+      }
       await updateSleeps([...sleeps, item])
-      return `已记录 ${item.date} 的睡眠：${hours} 小时`
+      const when = bedtime && waketime ? `${bedtime} → ${waketime}` : `${hours} 小时`
+      return `已记录 ${item.date} 的睡眠：${when}`
     },
   })
 }

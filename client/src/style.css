@@ -3951,6 +3951,65 @@ a.ov-card:hover {
   flex-wrap: wrap;
 }
 
+.health-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* 图例 */
+.health-legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.health-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.health-legend-item strong {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.health-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* 睡眠时间输入 */
+.health-time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.health-time-field .health-input {
+  flex: none;
+  min-width: 0;
+}
+
+.health-duration-hint {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  white-space: nowrap;
+}
+
 .health-metric-tabs,
 .health-mode-tabs {
   display: inline-flex;
