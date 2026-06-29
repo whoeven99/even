@@ -4066,6 +4066,12 @@ a.ov-card:hover {
   text-align: center;
 }
 
+.health-readonly-val {
+  font-weight: 600;
+  color: #0f172a;
+  padding: 5px 0;
+}
+
 .health-tip,
 .health-chart-empty {
   margin: 4px 0 10px;

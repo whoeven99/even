@@ -46,7 +46,6 @@ export function HealthPage() {
 
   const [heightInput, setHeightInput] = useState("");
   const [targetInput, setTargetInput] = useState("");
-  const [maxWeightInput, setMaxWeightInput] = useState("");
 
   // 身体数据表单（体重 + 体脂均必填）
   const [bodyDate, setBodyDate] = useState(todayStr());
@@ -67,27 +66,27 @@ export function HealthPage() {
 
   const heightCm = data.profile.heightCm;
   const targetWeightKg = data.profile.targetWeightKg;
-  const maxWeightKg = data.profile.maxWeightKg;
+
+  // 历史体重最大值：每次记录体重时自动取最大值，用作图表上限基线
+  const maxWeightKg = useMemo(() => {
+    const vals = data.bodyMetrics
+      .filter((b) => typeof b.weightKg === "number")
+      .map((b) => b.weightKg as number);
+    return vals.length > 0 ? Math.max(...vals) : null;
+  }, [data.bodyMetrics]);
 
   function handleSaveHeight() {
     const v = Number(heightInput.trim());
     if (!Number.isFinite(v) || v <= 0) return;
-    void saveProfile(v, targetWeightKg, maxWeightKg);
+    void saveProfile(v, targetWeightKg);
     setHeightInput("");
   }
 
   function handleSaveTarget() {
     const v = Number(targetInput.trim());
     if (!Number.isFinite(v) || v <= 0) return;
-    void saveProfile(heightCm, v, maxWeightKg);
+    void saveProfile(heightCm, v);
     setTargetInput("");
-  }
-
-  function handleSaveMaxWeight() {
-    const v = Number(maxWeightInput.trim());
-    if (!Number.isFinite(v) || v <= 0) return;
-    void saveProfile(heightCm, targetWeightKg, v);
-    setMaxWeightInput("");
   }
 
   const canAddBody = bodyWeight.trim() !== "" && bodyFat.trim() !== "";
@@ -317,20 +316,8 @@ export function HealthPage() {
                 <span className="muted">kg</span>
               </div>
               <div className="health-height-row">
-                <span className="muted">体重上限</span>
-                <input
-                  className="health-input health-input-sm"
-                  type="number"
-                  step="0.1"
-                  placeholder={maxWeightKg ? String(maxWeightKg) : "kg"}
-                  value={maxWeightInput}
-                  onChange={(e) => setMaxWeightInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveMaxWeight();
-                  }}
-                  onBlur={handleSaveMaxWeight}
-                />
-                <span className="muted">kg</span>
+                <span className="muted">历史最高</span>
+                <span className="health-readonly-val">{maxWeightKg != null ? `${maxWeightKg} kg` : "--"}</span>
               </div>
             </div>
 
