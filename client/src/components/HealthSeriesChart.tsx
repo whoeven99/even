@@ -70,15 +70,22 @@ export function HealthSeriesChart({
     return { lo: lo - pad, hi: hi + pad };
   }
 
+  // 收集所有参考线的值，确保 domain 计算时包含它们（目标体重等基线始终可见）
+  const allRefValues = (referenceLines || []).map((r) => r.value);
   const sharedDomain =
     normalize === "shared"
-      ? domainOf(series.flatMap((s) => s.points.map((p) => p.value)))
+      ? domainOf([
+          ...series.flatMap((s) => s.points.map((p) => p.value)),
+          ...allRefValues,
+        ])
       : null;
-  const domains = series.map((s) =>
-    normalize === "shared" && sharedDomain
-      ? sharedDomain
-      : domainOf(s.points.map((p) => p.value)),
-  );
+  const domains = series.map((s) => {
+    if (normalize === "shared" && sharedDomain) return sharedDomain;
+    const refValues = (referenceLines || [])
+      .filter((r) => r.seriesKey === s.key)
+      .map((r) => r.value);
+    return domainOf([...s.points.map((p) => p.value), ...refValues]);
+  });
 
   const yAt = (v: number, di: number) => {
     const d = domains[di];

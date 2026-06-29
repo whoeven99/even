@@ -46,6 +46,7 @@ export function HealthPage() {
 
   const [heightInput, setHeightInput] = useState("");
   const [targetInput, setTargetInput] = useState("");
+  const [maxWeightInput, setMaxWeightInput] = useState("");
 
   // 身体数据表单（体重 + 体脂均必填）
   const [bodyDate, setBodyDate] = useState(todayStr());
@@ -66,19 +67,27 @@ export function HealthPage() {
 
   const heightCm = data.profile.heightCm;
   const targetWeightKg = data.profile.targetWeightKg;
+  const maxWeightKg = data.profile.maxWeightKg;
 
   function handleSaveHeight() {
     const v = Number(heightInput.trim());
     if (!Number.isFinite(v) || v <= 0) return;
-    void saveProfile(v, targetWeightKg);
+    void saveProfile(v, targetWeightKg, maxWeightKg);
     setHeightInput("");
   }
 
   function handleSaveTarget() {
     const v = Number(targetInput.trim());
     if (!Number.isFinite(v) || v <= 0) return;
-    void saveProfile(heightCm, v);
+    void saveProfile(heightCm, v, maxWeightKg);
     setTargetInput("");
+  }
+
+  function handleSaveMaxWeight() {
+    const v = Number(maxWeightInput.trim());
+    if (!Number.isFinite(v) || v <= 0) return;
+    void saveProfile(heightCm, targetWeightKg, v);
+    setMaxWeightInput("");
   }
 
   const canAddBody = bodyWeight.trim() !== "" && bodyFat.trim() !== "";
@@ -307,6 +316,22 @@ export function HealthPage() {
                 />
                 <span className="muted">kg</span>
               </div>
+              <div className="health-height-row">
+                <span className="muted">体重上限</span>
+                <input
+                  className="health-input health-input-sm"
+                  type="number"
+                  step="0.1"
+                  placeholder={maxWeightKg ? String(maxWeightKg) : "kg"}
+                  value={maxWeightInput}
+                  onChange={(e) => setMaxWeightInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveMaxWeight();
+                  }}
+                  onBlur={handleSaveMaxWeight}
+                />
+                <span className="muted">kg</span>
+              </div>
             </div>
 
             {!heightCm && (
@@ -319,18 +344,14 @@ export function HealthPage() {
             <HealthSeriesChart
               series={bodySeries}
               normalize="independent"
-              referenceLines={
-                targetWeightKg != null
-                  ? [
-                      {
-                        seriesKey: "weight",
-                        value: targetWeightKg,
-                        label: `目标 ${targetWeightKg}kg`,
-                        color: "#16a34a",
-                      },
-                    ]
-                  : undefined
-              }
+              referenceLines={[
+                ...(targetWeightKg != null
+                  ? [{ seriesKey: "weight" as const, value: targetWeightKg, label: `目标 ${targetWeightKg}kg`, color: "#16a34a" }]
+                  : []),
+                ...(maxWeightKg != null
+                  ? [{ seriesKey: "weight" as const, value: maxWeightKg, label: `上限 ${maxWeightKg}kg`, color: "#dc2626" }]
+                  : []),
+              ]}
             />
 
             <div className="health-add-row">

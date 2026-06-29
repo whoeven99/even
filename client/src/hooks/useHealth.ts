@@ -65,6 +65,7 @@ export function formatSince18(v: number): string {
 export type HealthProfile = {
   heightCm: number | null;
   targetWeightKg: number | null;
+  maxWeightKg: number | null;
 };
 
 export type HealthData = {
@@ -78,7 +79,7 @@ export type HealthData = {
 type HealthApiResponse = { ok: boolean; message?: string } & HealthData;
 
 const EMPTY: HealthData = {
-  profile: { heightCm: null, targetWeightKg: null },
+  profile: { heightCm: null, targetWeightKg: null, maxWeightKg: null },
   bodyMetrics: [],
   exercises: [],
   sleeps: [],
@@ -204,7 +205,7 @@ export function useHealth() {
       );
       if (mountedRef.current) {
         setData({
-          profile: res.profile ?? { heightCm: null, targetWeightKg: null },
+          profile: res.profile ?? { heightCm: null, targetWeightKg: null, maxWeightKg: null },
           bodyMetrics: res.bodyMetrics ?? [],
           exercises: res.exercises ?? [],
           sleeps: res.sleeps ?? [],
@@ -242,7 +243,7 @@ export function useHealth() {
       );
       if (mountedRef.current) {
         setData({
-          profile: res.profile ?? { heightCm: null, targetWeightKg: null },
+          profile: res.profile ?? { heightCm: null, targetWeightKg: null, maxWeightKg: null },
           bodyMetrics: res.bodyMetrics ?? [],
           exercises: res.exercises ?? [],
           sleeps: res.sleeps ?? [],
@@ -260,8 +261,8 @@ export function useHealth() {
   }, []);
 
   const saveProfile = useCallback(
-    (heightCm: number | null, targetWeightKg?: number | null) =>
-      persist("profile", { heightCm, targetWeightKg: targetWeightKg ?? null }),
+    (heightCm: number | null, targetWeightKg?: number | null, maxWeightKg?: number | null) =>
+      persist("profile", { heightCm, targetWeightKg: targetWeightKg ?? null, maxWeightKg: maxWeightKg ?? null }),
     [persist],
   );
   const saveBody = useCallback(

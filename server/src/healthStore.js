@@ -108,6 +108,7 @@ function sanitizeProfile(profile) {
   return {
     heightCm: num(profile?.heightCm),
     targetWeightKg: num(profile?.targetWeightKg),
+    maxWeightKg: num(profile?.maxWeightKg),
   };
 }
 
@@ -147,7 +148,7 @@ async function getHealth() {
   const resource = await getDoc();
   if (!resource) {
     return {
-      profile: { heightCm: null, targetWeightKg: null },
+      profile: { heightCm: null, targetWeightKg: null, maxWeightKg: null },
       bodyMetrics: [],
       exercises: [],
       sleeps: [],

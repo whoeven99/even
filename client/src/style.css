@@ -4094,6 +4094,11 @@ a.ov-card:hover {
   font-size: 11px;
 }
 
+.health-chart-ref-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
 /* 添加行 */
 .health-add-row {
   display: flex;
