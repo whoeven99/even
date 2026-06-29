@@ -1,4 +1,16 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') })
+// 按优先级加载环境变量：先加载项目 .env，再加载 Render Secret File（不覆盖已有值）
+const dotenv = require('dotenv')
+const envFiles = [
+  require('path').resolve(__dirname, '..', '.env'),
+  '/etc/secrets/.env',
+  '/etc/secrets/env',
+]
+for (const fp of envFiles) {
+  try { dotenv.config({ path: fp, override: false }) } catch (_) { /* 文件不存在则跳过 */ }
+}
+const { logStartupEnv } = require('./envLog')
+logStartupEnv()
+
 const express = require('express')
 const cors = require('cors')
 const path = require('path')
